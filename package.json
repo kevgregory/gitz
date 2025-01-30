@@ -1,0 +1,16 @@
+{
+  "name": "gitz",
+  "version": "1.0.0",
+  "description": "(here learn how to add images into your read me)  (photo file of the images taro di folder docs)",
+  "type": "module",
+  "main": "src/gitz.js",
+  "scripts": {
+    "test": "c8 node --test test/*.test.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "c8": "^10.1.3"
+  }
+}
