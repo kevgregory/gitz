@@ -8,13 +8,13 @@ Gitz is perfect for those who think programming should have more personality. If
 
 ## Features
 
-* **Print , but Casual: **No need for print(). Just use say()
-* **Variables? Just make up Words: ** You don't need let or var, Just name it.
-* **Loops: **loopuntil instead of while
-* **Functions: ** Define functions with youDo().
-* **If-Else: ** Gitz handles conditions with ifMaybe() and elseNo()
-* **Lists: **Gitz supports lists using bunch
-* **No Static Typing: ** but we do check your logic
+- **Print, but Casual:** No need for `print()`. Just use `say()`.
+- **Variables? Just Make Up Words:** You don't need `let` or `var`. Just name it.
+- **Loops:** Use `loopuntil` instead of `while`.
+- **Functions:** Define functions with `youDo()`.
+- **If-Else:** Gitz handles conditions with `ifMaybe()` and `elseNo()`.
+- **Lists:** Gitz supports lists using `bunch`.
+- **No Static Typing:** But we do check your logic.
 
 
 ## Examples
