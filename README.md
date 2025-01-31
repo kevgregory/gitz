@@ -7,14 +7,17 @@ Gitz is perfect for those who think programming should have more personality. If
 
 ## Features
 
-- **Print, but Casual:** No need for `print()`. Just use `say()`.
-- **Variables? Just Make Up Words:** You don't need `let` or `var`. Just name it.
-- **Loops:** Use `loopuntil` instead of `while`.
-- **Functions:** Define functions with `youDo()`.
-- **If-Else:** Gitz handles conditions with `ifMaybe()` and `elseNo()`.
-- **Lists:** Gitz supports lists using `bunch`.
-- **No Static Typing:** But we do check your logic.
+- **Say Stuff:** No need for `print()`. Just use `say()`.
+- **Make Things:** Declare variables with `Make` and **define their type**.
+- **Keep Doing Things:** Use `Keep` for loops.
+- **Show How To Do Stuff:** Define functions with `Show()`, return values with `give()`.
+- **When This Happens:** Handle conditions with `When` and `orElse`.
+- **Compare Things:** Use `bigger`, `smaller`, `equal`, `notSame` for comparisons.
+- **Do Math:** Use `plus`, `minus`, `times`, `over`, `mod` for calculations.
+- **Keep Lists:** Use `list` to store multiple things.
+- **Static Typing:** Even though Gitz **feels casual**, types **must match**.
 
+---
 
 ## Examples
 
@@ -26,10 +29,12 @@ name = "Bob"
 print("Hello", name)
 ```
 #### Gitz
-```Gitz
-name is "Alice"
+```gitz
+Make name: text = "Alice"
 say("Hello", name)
 ```
+
+---
 
 ### Loops
 
@@ -41,12 +46,14 @@ while x < 10:
     x += 1
 ```
 #### Gitz
-```Gitz
-x is 0
-loopuntil x big 10:
+```gitz
+Make x: num = 0
+Keep x smaller 10:
     say(x)
-    x is x + 1
+    x = x plus 1
 ```
+
+---
 
 ### If-Else Statements
 
@@ -58,12 +65,14 @@ else:
     print("Small number!")
 ```
 #### Gitz
-```Gitz
-ifMaybe x big 5:
+```gitz
+When x bigger 5:
     say("Big number!")
-elseNo:
-    say("Small number!'")
+orElse:
+    say("Small number!")
 ```
+
+---
 
 ### Functions
 
@@ -73,10 +82,12 @@ def greet(name):
     return "Hello " + name
 ```
 #### Gitz
-```Gitz
-youDo greet(name):
-    giveBack "Hello " + name
+```gitz
+Show greet(name: text) -> text:
+    give "Hello " plus name
 ```
+
+---
 
 ### Lists
 
@@ -86,7 +97,7 @@ fruits = ["apple", "banana", "cherry"]
 print(fruits[0])
 ```
 #### Gitz
-```Gitz
-bunch fruits is ["apple", "banana", "cherry"]
+```gitz
+list fruits: text = ["apple", "banana", "cherry"]
 say(fruits at 0)
 ```
