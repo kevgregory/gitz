@@ -23,10 +23,10 @@ Gitz is perfect for those who think programming should have more personality. If
 
 ### Variables and Printing
 
-#### Python
-```python
-name = "Bob"
-print("Hello", name)
+#### JavaScript
+```javascript
+let name = "Bob";
+console.log("Hello", name);
 ```
 #### Gitz
 ```gitz
@@ -38,12 +38,13 @@ say("Hello", name)
 
 ### Loops
 
-#### Python
-```python
-x = 0
-while x < 10:
-    print(x)
-    x += 1
+#### JavaScript
+```javascript
+let x = 0;
+while (x < 10) {
+    console.log(x);
+    x += 1;
+}
 ```
 #### Gitz
 ```gitz
@@ -57,12 +58,13 @@ Keep x smaller 10:
 
 ### If-Else Statements
 
-#### Python
-```python
-if x > 5:
-    print("Big number!")
-else:
-    print("Small number!")
+#### JavaScript
+```javascript
+if (x > 5) {
+    console.log("Big number!");
+} else {
+    console.log("Small number!");
+}
 ```
 #### Gitz
 ```gitz
@@ -76,10 +78,11 @@ orElse:
 
 ### Functions
 
-#### Python
-```python
-def greet(name):
-    return "Hello " + name
+#### JavaScript
+```javascript
+function greet(name) {
+    return "Hello " + name;
+}
 ```
 #### Gitz
 ```gitz
@@ -91,13 +94,14 @@ Show greet(name: text) -> text:
 
 ### Lists
 
-#### Python
-```python
-fruits = ["apple", "banana", "cherry"]
-print(fruits[0])
+#### JavaScript
+```javascript
+let fruits = ["apple", "banana", "cherry"];
+console.log(fruits[0]);
 ```
 #### Gitz
 ```gitz
 list fruits: text = ["apple", "banana", "cherry"]
 say(fruits at 0)
 ```
+
