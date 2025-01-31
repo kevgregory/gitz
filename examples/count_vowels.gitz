@@ -1,0 +1,12 @@
+Show countVowels(text: text) -> num:
+    Make count: num = 0
+    Make i: num = 0
+    list vowels: text = ["a", "e", "i", "o", "u"]
+    Keep i smaller text length:
+        When text at i in vowels:
+            count = count plus 1
+        i = i plus 1
+    give count
+
+Make sentence: text = "Hello, Gitz!"
+say("Number of vowels in sentence is", countVowels(sentence))

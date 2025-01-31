@@ -1,0 +1,10 @@
+Show reverseString(word: text) -> text:
+    Make reversed: text = ""
+    Make i: num = word length minus 1
+    Keep i biggerOrSame 0:
+        reversed = reversed plus word at i
+        i = i minus 1
+    give reversed
+
+Make text: text = "Gitz"
+say("Reversed text is", reverseString(text))

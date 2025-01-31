@@ -1,0 +1,7 @@
+Show factorial(n: num) -> num:
+    When n equal 0:
+        give 1
+    give n times factorial(n minus 1)
+
+Make num: num = 5
+say("Factorial of", num, "is", factorial(num))

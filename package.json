@@ -1,14 +1,23 @@
 {
   "name": "gitz",
   "version": "1.0.0",
-  "description": "(here learn how to add images into your read me)  (photo file of the images taro di folder docs)",
+  "description": "Gitz - A fun, broken-English programming language.",
   "type": "module",
   "main": "src/gitz.js",
   "scripts": {
     "test": "c8 node --test test/*.test.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "programming language",
+    "compiler",
+    "fun syntax",
+    "JavaScript"
+  ],
+  "author": [
+    "Kevin Thomas",
+    "Callista Napitupulu",
+    "Stanley Gunawan"
+  ],
   "license": "ISC",
   "devDependencies": {
     "c8": "^10.1.3"

@@ -1,0 +1,10 @@
+Show sumList(nums: list num) -> num:
+    Make total: num = 0
+    Make i: num = 0
+    Keep i smaller nums length:
+        total = total plus nums at i
+        i = i plus 1
+    give total
+
+list numbers: num = [1, 2, 3, 4, 5]
+say("Sum of list is", sumList(numbers))
