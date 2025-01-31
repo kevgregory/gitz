@@ -32,7 +32,7 @@ name is "Alice"
 say("Hello", name)
 ```
 
-#### Loops
+### Loops
 
 #### Python
 ```python
