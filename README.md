@@ -1,5 +1,4 @@
-(here learn how to add images into your read me) 
-(photo file of the images taro di folder docs)
+![Gitz Logo](docs/Gitz.svg)
 
 # gitz
 Gitz is a programming language that embraces broken English while still being readable and functional. Gitz is designed to be fun, expressive and intuitive. Gitz is designed to so that people can write code as if they were talking, but it still compiles
