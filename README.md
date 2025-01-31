@@ -19,4 +19,13 @@ Gitz is perfect for those who think programming should have more personality. If
 
 ## Examples
 
-At least 5 significant examples
+### Hello world
+
+#### Python
+```python
+print("Hello, world!")
+```
+#### Gitz
+```Gitz
+say("Hello, world!")
+```
