@@ -19,13 +19,75 @@ Gitz is perfect for those who think programming should have more personality. If
 
 ## Examples
 
-### Hello world
+### Variables and Printing
 
 #### Python
 ```python
-print("Hello, world!")
+name = "Bob"
+print("Hello", name)
 ```
 #### Gitz
 ```Gitz
-say("Hello, world!")
+name is "Alice"
+say("Hello", name)
+```
+
+#### Loops
+
+#### Python
+```python
+x = 0
+while x < 10:
+    print(x)
+    x += 1
+```
+#### Gitz
+```Gitz
+x is 0
+loopuntil x big 10:
+    say(x)
+    x is x + 1
+```
+
+### If-Else Statements
+
+#### Python
+```python
+if x > 5:
+    print("Big number!")
+else:
+    print("Small number!")
+```
+#### Gitz
+```Gitz
+ifMaybe x big 5:
+    say("Big number!")
+elseNo:
+    say("Small number!'")
+```
+
+### Functions
+
+#### Python
+```python
+def greet(name):
+    return "Hello " + name
+```
+#### Gitz
+```Gitz
+youDo greet(name):
+    giveBack "Hello " + name
+```
+
+### Lists
+
+#### Python
+```python
+fruits = ["apple", "banana", "cherry"]
+print(fruits[0])
+```
+#### Gitz
+```Gitz
+bunch fruits is ["apple", "banana", "cherry"]
+say(fruits at 0)
 ```
