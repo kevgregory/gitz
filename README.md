@@ -1,4 +1,4 @@
-![Gitz Logo](docs/Gitz.svg)
+![Gitz Logo](docs/Gitz.png)
 
 # gitz
 Gitz is a programming language that embraces broken English while still being readable and functional. Gitz is designed to be fun, expressive and intuitive. Gitz is designed to so that people can write code as if they were talking, but it still compiles
