@@ -1,9 +1,8 @@
-import { describe, it } from 'node:test';
-import { deepEqual } from 'node:assert/strict';
-import "../src/gitz.js";
+import { describe, it } from 'node:test'
+import assert from 'node:assert/strict'
 
-describe('compiler', () => {
-    it('is alive', () => {
-        deepEqual(1, 1);
-    });
-});
+describe('The project setup', () => {
+  it('can at least run tests', () => {
+    assert.deepEqual(1, 1)
+  })
+})
