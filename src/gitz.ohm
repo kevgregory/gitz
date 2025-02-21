@@ -1,0 +1,107 @@
+Gitz {
+  Program = StatementList
+
+  StatementList = (Statement (newline | ";"))*
+
+  Statement =
+      space* SayStmtStmt   --sayStmt
+    | space* VarDeclStmt   --varDecl
+    | space* ListDeclStmt  --listDecl
+    | space* FunDeclStmt   --funDecl
+    | space* ReturnStmtStmt --returnStmt
+    | space* IfStmtStmt    --ifStmt
+    | space* LoopStmtStmt  --loopStmt
+    | space* AssignmentStmt --assignmentStmt
+    | space* FunCallStmt   --funCallStmt
+    | space* ExpStmt       --expressionStmt
+
+  // Statements
+  SayStmtStmt = SayStmt ";"
+  SayStmt     = "say" "(" ListOf<Exp, ","> ")"
+
+  VarDeclStmt = VarDecl ";"
+  ListDeclStmt = ListDecl ";"
+  FunDeclStmt = FunDecl
+  ReturnStmtStmt = ReturnStmt ";"
+  IfStmtStmt = IfStmt
+  LoopStmtStmt = LoopStmt
+  AssignmentStmt = Assignment ";"
+  FunCallStmt = FunCall ";"
+  ExpStmt = Exp ";"
+
+  // Variable & List Declarations
+  VarDecl = "Make" id ":" Type ( "=" | "is" ) Exp
+  ListDecl = "list" id ":" Type ( "=" | "is" ) ListExp
+
+  // Function Declaration
+  FunDecl = "Show" id Params "->" Type ":" newline StatementList? ";"
+
+  Params = "(" ParamList? ")"
+  ParamList = Param ("," Param)*
+  Param = id ":" Type
+
+  // Return Statement
+  ReturnStmt = "give" Exp
+
+  // If Statement
+  IfStmt = "When" Exp ":" newline StatementList? ("orElse" ":" newline StatementList?)? ";"
+
+  // Loop Statement
+  LoopStmt = "Keep" Exp ":" newline StatementList? ";"
+
+  // Assignments
+  Assignment = id "=" Exp
+
+  // Function Calls
+  FunCall = id "(" ListOf<Exp, ","> ")"
+
+  // Expressions
+  Exp = Exp1 ("?" Exp1 ":" Exp)? --conditional
+  Exp1 = Exp2 ("??" Exp2)*
+  Exp2 = Exp3 ("or" Exp3)*
+  Exp3 = Exp4 ("and" Exp4)*
+  Exp4 = Exp5 ("bitOr" Exp5)*
+  Exp5 = Exp6 ("bitXor" Exp6)*
+  Exp6 = Exp7 ("bitAnd" Exp7)*
+  Exp7 = Exp8 (("smaller" | "smallerOrSame" | "equal" | "notSame" | "biggerOrSame" | "bigger" | "in") Exp8)?
+  Exp8 = Exp9 (("shiftLeft" | "shiftRight") Exp9)?
+  Exp9 = Exp10 (("plus" | "minus") Exp10)?
+  Exp10 = Exp11 (("times" | "over" | "mod") Exp11)?
+  Exp11 = Exp12 ("power" Exp12)?
+
+  Exp12 = ( "negate" | "some" | "no" | "random" ) Exp12 --unary
+        | MemberExpr --base
+
+  MemberExpr = Primary (MemberSuffix)*
+  MemberSuffix = "." id | "at" Exp
+
+  // List Expressions
+  ListExp = "[" ListOf<Exp, ","> "]"
+
+  // Primary Expressions
+  Primary = numlit --numLit
+          | textlit --textLit
+          | id --id
+          | ListExp --listExp
+          | FunCall --funCall
+          | "(" Exp ")" --parens
+
+  // Types
+  Type = id | "list" Type --listType
+
+  // Lexical Rules
+  numlit = digit+ ("." digit+)?
+  textlit = "\"" (~"\"" any)* "\""
+  id = ~keyword letter (letter | digit)*
+
+  keyword = "Make" | "list" | "Show" | "When" | "Keep" | "orElse"
+          | "give" | "say" | "at" | "in" | "plus" | "minus"
+          | "times" | "over" | "mod" | "smaller" | "smallerOrSame"
+          | "equal" | "notSame" | "biggerOrSame" | "bigger"
+          | "shiftLeft" | "shiftRight" | "bitOr" | "bitXor" | "bitAnd"
+          | "power" | "negate" | "some" | "no" | "random"
+
+  // Whitespace Handling
+  space += " " | "\t"
+  newline = "\n"
+}
