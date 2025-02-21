@@ -13,10 +13,14 @@
     "fun syntax",
     "JavaScript"
   ],
-  "author":
-    "Kevin Thomas, Callista Napitupulu, Stanley Gunawan",
+  "author": "Kevin Thomas, Callista Napitupulu, Stanley Gunawan",
   "license": "ISC",
   "devDependencies": {
-    "c8": "^10.1.3"
+    "c8": "^10.1.3",
+    "prettier": "^3.5.1"
+  },
+  "dependencies": {
+    "graph-stringify": "^1.1.0",
+    "ohm-js": "^17.1.0"
   }
 }
