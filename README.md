@@ -105,3 +105,4 @@ list fruits: text = ["apple", "banana", "cherry"]
 say(fruits at 0)
 ```
 
+By : Kevin Thomas, Callista Napitupulu, Stanley Gunawan
