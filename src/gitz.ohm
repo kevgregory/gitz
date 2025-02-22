@@ -72,7 +72,7 @@ Gitz {
   // Unary Expressions
   UnaryExp = ("minus" | "not")? PrimaryExp
 
-  // Primary Expressions (Fix: Ensuring function calls work inside expressions)
+  // Primary Expressions 
   PrimaryExp = 
       "(" Exp ")"  --parens
     | FunCall      --functionCall
@@ -109,7 +109,7 @@ Gitz {
 
   Control = "\x00".."\x1f" | "\x80".."\x9f"
 
-  // Keywords (Prevent reserved words from being identifiers)
+  // Keywords 
   keyword = "Make" | "list" | "Show" | "When" | "Keep" | "orWhen" | "orElse"
           | "give" | "say" | "Break" | "Skip" | "Try" | "Catch" | "in"
 
