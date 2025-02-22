@@ -1,9 +1,6 @@
-Show fibonacci(n: num) -> num:
-    When n smallerOrSame 0:
-        give 0
-    When n equal 1:
-        give 1
-    give fibonacci(n minus 1) plus fibonacci(n minus 2)
-
-Make num: num = 8
-say("Fibonacci of", num, "is", fibonacci(num))
+Show fibonacci(n: num) -> num {
+    When n smaller 2 {   
+        give n;
+    }
+    give fibonacci(n minus 1) plus fibonacci(n minus 2);  # ✅ Added semicolon
+}

@@ -1,107 +1,113 @@
 Gitz {
-  Program = StatementList
-
-  StatementList = (Statement (newline | ";"))*
-
-  Statement =
-      space* SayStmtStmt   --sayStmt
-    | space* VarDeclStmt   --varDecl
-    | space* ListDeclStmt  --listDecl
-    | space* FunDeclStmt   --funDecl
-    | space* ReturnStmtStmt --returnStmt
-    | space* IfStmtStmt    --ifStmt
-    | space* LoopStmtStmt  --loopStmt
-    | space* AssignmentStmt --assignmentStmt
-    | space* FunCallStmt   --funCallStmt
-    | space* ExpStmt       --expressionStmt
+  Program = Statement+
 
   // Statements
-  SayStmtStmt = SayStmt ";"
-  SayStmt     = "say" "(" ListOf<Exp, ","> ")"
+  Statement =
+      VarDecl
+    | ListDecl
+    | FunDecl
+    | Assignment
+    | FunCall
+    | ReturnStmt
+    | IfStmt
+    | LoopStmt
+    | TryStmt
+    | BreakStmt
+    | ContinueStmt
+    | SayStmt
 
-  VarDeclStmt = VarDecl ";"
-  ListDeclStmt = ListDecl ";"
-  FunDeclStmt = FunDecl
-  ReturnStmtStmt = ReturnStmt ";"
-  IfStmtStmt = IfStmt
-  LoopStmtStmt = LoopStmt
-  AssignmentStmt = Assignment ";"
-  FunCallStmt = FunCall ";"
-  ExpStmt = Exp ";"
+  // Print Statement
+  SayStmt = "say" "(" ListOf<Exp, ","> ")" ";"
 
   // Variable & List Declarations
-  VarDecl = "Make" id ":" Type ( "=" | "is" ) Exp
-  ListDecl = "list" id ":" Type ( "=" | "is" ) ListExp
+  VarDecl = "Make" id ":" (BasicType | ListType) Initialiser ";"
+  ListDecl = "Make" id ":" ListType Initialiser ";"
+
+  // Initialization (JavaScript-like)
+  Initialiser = "=" AssignmentExpression
 
   // Function Declaration
-  FunDecl = "Show" id Params "->" Type ":" newline StatementList? ";"
-
-  Params = "(" ParamList? ")"
-  ParamList = Param ("," Param)*
+  FunDecl = "Show" id Params ("->" Type)? Block
+  Params = "(" ListOf<Param, ","> ")"
   Param = id ":" Type
 
-  // Return Statement
-  ReturnStmt = "give" Exp
+  // Return Statement (Allow optional `;`)
+  ReturnStmt = "give" Exp (";" | end)
 
   // If Statement
-  IfStmt = "When" Exp ":" newline StatementList? ("orElse" ":" newline StatementList?)? ";"
+  IfStmt = "When" Exp Block ("orWhen" Exp Block)* ("orElse" Block)?
 
-  // Loop Statement
-  LoopStmt = "Keep" Exp ":" newline StatementList? ";"
+  // Loop Statements
+  LoopStmt = "Keep" id "in" Exp Block --forEach
+           | "Keep" Exp Block          --whileLoop
+
+  // Break & Continue (for loop control)
+  BreakStmt = "Break" ";"
+  ContinueStmt = "Skip" ";"
 
   // Assignments
-  Assignment = id "=" Exp
+  Assignment = id "=" AssignmentExpression ";"
 
   // Function Calls
   FunCall = id "(" ListOf<Exp, ","> ")"
 
+  // Try-Catch Blocks
+  TryStmt = "Try" Block "Catch" id Block
+
+  // Code Blocks
+  Block = "{" Statement* "}"
+
   // Expressions
-  Exp = Exp1 ("?" Exp1 ":" Exp)? --conditional
-  Exp1 = Exp2 ("??" Exp2)*
-  Exp2 = Exp3 ("or" Exp3)*
-  Exp3 = Exp4 ("and" Exp4)*
-  Exp4 = Exp5 ("bitOr" Exp5)*
-  Exp5 = Exp6 ("bitXor" Exp6)*
-  Exp6 = Exp7 ("bitAnd" Exp7)*
-  Exp7 = Exp8 (("smaller" | "smallerOrSame" | "equal" | "notSame" | "biggerOrSame" | "bigger" | "in") Exp8)?
-  Exp8 = Exp9 (("shiftLeft" | "shiftRight") Exp9)?
-  Exp9 = Exp10 (("plus" | "minus") Exp10)?
-  Exp10 = Exp11 (("times" | "over" | "mod") Exp11)?
-  Exp11 = Exp12 ("power" Exp12)?
+  Exp = AssignmentExpression  --standardExp
+  AssignmentExpression = EqualityExpression
+  EqualityExpression = RelationalExpression ("equal" RelationalExpression | "notSame" RelationalExpression)?
+  RelationalExpression = AdditiveExpression ("bigger" AdditiveExpression | "smaller" AdditiveExpression | "in" AdditiveExpression)? 
+  AdditiveExpression = MultiplicativeExpression ("plus" MultiplicativeExpression | "minus" MultiplicativeExpression)?
+  MultiplicativeExpression = UnaryExpression ("times" UnaryExpression | "over" UnaryExpression | "mod" UnaryExpression)?
 
-  Exp12 = ( "negate" | "some" | "no" | "random" ) Exp12 --unary
-        | MemberExpr --base
+  // **Fixed UnaryExpression**
+  UnaryExpression = "not" PrimaryExpression  --negate
+                  | PrimaryExpression
 
-  MemberExpr = Primary (MemberSuffix)*
-  MemberSuffix = "." id | "at" Exp
+  // **Fixed PrimaryExpression (Allows Function Calls)**
+  PrimaryExpression = "(" Exp ")"  --parens
+                    | FunCall      --functionCall
+                    | id           --identifier
+                    | IntLit       --integer
+                    | FloatLit     --float
+                    | StringLit    --string
+                    | ListExp      --list
 
-  // List Expressions
-  ListExp = "[" ListOf<Exp, ","> "]"
+  // Data Types
+  Type = BasicType | ListType
+  BasicType = "num" | "text" | "bool" | id
+  ListType = "list" "[" Type "]" | "list" "<" Type ">"
 
-  // Primary Expressions
-  Primary = numlit --numLit
-          | textlit --textLit
-          | id --id
-          | ListExp --listExp
-          | FunCall --funCall
-          | "(" Exp ")" --parens
+  // Identifiers (ensures they do not match keywords)
+  id = ~keyword letter alnum*
 
-  // Types
-  Type = id | "list" Type --listType
+  // Literals
+  IntLit = digit+
+  FloatLit = digit+ "." digit+ ("E" ("+" | "-")? digit+)?
+  StringLit = "\"" Char* "\""
+  ListExp = "[" ListOf<(StringLit | Exp), ",">? "]"
 
-  // Lexical Rules
-  numlit = digit+ ("." digit+)?
-  textlit = "\"" (~"\"" any)* "\""
-  id = ~keyword letter (letter | digit)*
+  // Characters inside string literals
+  Char = NormalChar | EscapeSeq | unicodeEscape
+  NormalChar = ~Control ~"\\" ~"\"" any
+  EscapeSeq = "\\" ("n" | "t" | "\"" | "\\")
+  unicodeEscape = "\\u{" hexDigit+ "}"
+  
+  Control = "\x00".."\x1f" | "\x80".."\x9f"
 
-  keyword = "Make" | "list" | "Show" | "When" | "Keep" | "orElse"
-          | "give" | "say" | "at" | "in" | "plus" | "minus"
-          | "times" | "over" | "mod" | "smaller" | "smallerOrSame"
-          | "equal" | "notSame" | "biggerOrSame" | "bigger"
-          | "shiftLeft" | "shiftRight" | "bitOr" | "bitXor" | "bitAnd"
-          | "power" | "negate" | "some" | "no" | "random"
+  // Keywords (ensuring reserved words are excluded from id)
+  keyword = "Make" | "list" | "Show" | "When" | "Keep" | "orWhen" | "orElse" 
+          | "give" | "say" | "Break" | "Skip" | "Try" | "Catch" | "in"
 
-  // Whitespace Handling
+  // Comments and Whitespace Handling
   space += " " | "\t"
   newline = "\n"
+  comment = "#" (~"\n" any)*
+  multiLineComment = "/*" (~"*/" any)* "*/"
+  space += comment | multiLineComment
 }
