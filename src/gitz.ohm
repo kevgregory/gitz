@@ -7,7 +7,7 @@ Gitz {
     | ListDecl
     | FunDecl
     | Assignment
-    | FunCall
+    | FunCallStatement
     | ReturnStmt
     | IfStmt
     | LoopStmt
@@ -16,40 +16,43 @@ Gitz {
     | ContinueStmt
     | SayStmt
 
-  // Print Statement
+  FunCallStatement = FunCall ";"
+  BreakStmt = "Break" ";"
+  ContinueStmt = "Skip" ";"
   SayStmt = "say" "(" ListOf<Exp, ","> ")" ";"
 
   // Variable & List Declarations
   VarDecl = "Make" id ":" (BasicType | ListType) Initialiser ";"
   ListDecl = "Make" id ":" ListType Initialiser ";"
 
-  // Initialization (JavaScript-like)
-  Initialiser = "=" AssignmentExpression
+  // Initialization
+  Initialiser = "=" Exp
 
   // Function Declaration
   FunDecl = "Show" id Params ("->" Type)? Block
   Params = "(" ListOf<Param, ","> ")"
   Param = id ":" Type
 
-  // Return Statement (Allow optional `;`)
-  ReturnStmt = "give" Exp (";" | end)
+  // Return Statement
+  ReturnStmt = "give" Exp ";"
 
-  // If Statement
+  // If-Else Statements
   IfStmt = "When" Exp Block ("orWhen" Exp Block)* ("orElse" Block)?
 
   // Loop Statements
   LoopStmt = "Keep" id "in" Exp Block --forEach
            | "Keep" Exp Block          --whileLoop
 
-  // Break & Continue (for loop control)
-  BreakStmt = "Break" ";"
-  ContinueStmt = "Skip" ";"
-
   // Assignments
-  Assignment = id "=" AssignmentExpression ";"
+  Assignment = (id | IndexedAccess) "=" Exp ";" --valid
+             | IntLit "=" Exp ";"               --invalid
 
-  // Function Calls
-  FunCall = id "(" ListOf<Exp, ","> ")"
+  // Indexed list access
+  IndexedAccess = id "[" Exp "]"
+
+  // Function Calls (Fixed for empty and non-empty argument lists)
+  FunCall = id "(" ListOf<Exp, ","> ")" --nonEmpty
+          | id "(" ")" --empty
 
   // Try-Catch Blocks
   TryStmt = "Try" Block "Catch" id Block
@@ -57,39 +60,45 @@ Gitz {
   // Code Blocks
   Block = "{" Statement* "}"
 
-  // Expressions
-  Exp = AssignmentExpression  --standardExp
-  AssignmentExpression = EqualityExpression
-  EqualityExpression = RelationalExpression ("equal" RelationalExpression | "notSame" RelationalExpression)?
-  RelationalExpression = AdditiveExpression ("bigger" AdditiveExpression | "smaller" AdditiveExpression | "in" AdditiveExpression)? 
-  AdditiveExpression = MultiplicativeExpression ("plus" MultiplicativeExpression | "minus" MultiplicativeExpression)?
-  MultiplicativeExpression = UnaryExpression ("times" UnaryExpression | "over" UnaryExpression | "mod" UnaryExpression)?
+  // Expressions (Ensuring function calls work inside expressions)
+  Exp = LogicalOrExp
+  LogicalOrExp = LogicalAndExp ("or" LogicalAndExp)*
+  LogicalAndExp = EqualityExp ("and" EqualityExp)*
+  EqualityExp = RelationalExp (("==" | "!=" | "equal" | "notSame") RelationalExp)*
+  RelationalExp = AdditiveExp (("<" | ">" | "bigger" | "smaller" | "in") AdditiveExp)*
+  AdditiveExp = MultiplicativeExp (("plus" | "minus") MultiplicativeExp)*
+  MultiplicativeExp = UnaryExp (("times" | "over" | "mod") UnaryExp)*
 
-  // **Fixed UnaryExpression**
-  UnaryExpression = "not" PrimaryExpression  --negate
-                  | PrimaryExpression
+  // Unary Expressions
+  UnaryExp = ("minus" | "not")? PrimaryExp
 
-  // **Fixed PrimaryExpression (Allows Function Calls)**
-  PrimaryExpression = "(" Exp ")"  --parens
-                    | FunCall      --functionCall
-                    | id           --identifier
-                    | IntLit       --integer
-                    | FloatLit     --float
-                    | StringLit    --string
-                    | ListExp      --list
+  // Primary Expressions (Fix: Ensuring function calls work inside expressions)
+  PrimaryExp = 
+      "(" Exp ")"  --parens
+    | FunCall      --functionCall
+    | IndexedAccess --listIndexing
+    | id           --identifier
+    | IntLit       --integer
+    | FloatLit     --float
+    | StringLit    --string
+    | ListExp      --list
 
   // Data Types
   Type = BasicType | ListType
   BasicType = "num" | "text" | "bool" | id
-  ListType = "list" "[" Type "]" | "list" "<" Type ">"
+  ListType = "list" "[" Type "]" | "list" "<" Type ">" 
 
-  // Identifiers (ensures they do not match keywords)
+  // Identifiers (Ensuring they do not match keywords)
   id = ~keyword letter alnum*
 
   // Literals
   IntLit = digit+
   FloatLit = digit+ "." digit+ ("E" ("+" | "-")? digit+)?
-  StringLit = "\"" Char* "\""
+
+  // String literals (Fixed to enforce proper error handling)
+  StringLit = "\"" Char* "\"" --closed
+            | "\"" Char*      --unclosed
+
   ListExp = "[" ListOf<(StringLit | Exp), ",">? "]"
 
   // Characters inside string literals
@@ -97,11 +106,11 @@ Gitz {
   NormalChar = ~Control ~"\\" ~"\"" any
   EscapeSeq = "\\" ("n" | "t" | "\"" | "\\")
   unicodeEscape = "\\u{" hexDigit+ "}"
-  
+
   Control = "\x00".."\x1f" | "\x80".."\x9f"
 
-  // Keywords (ensuring reserved words are excluded from id)
-  keyword = "Make" | "list" | "Show" | "When" | "Keep" | "orWhen" | "orElse" 
+  // Keywords (Prevent reserved words from being identifiers)
+  keyword = "Make" | "list" | "Show" | "When" | "Keep" | "orWhen" | "orElse"
           | "give" | "say" | "Break" | "Skip" | "Try" | "Catch" | "in"
 
   // Comments and Whitespace Handling
