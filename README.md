@@ -5,7 +5,7 @@ Gitz is a programming language that embraces broken English while still being re
 
 Gitz is perfect for those who think programming should have more personality. If python is readable, Gitz is vibable
 
-## Features
+##  Features
 
 - **Say Stuff:** No need for `print()`. Just use `say()`.
 - **Make Things:** Declare variables with `Make` and **define their type**.
@@ -30,8 +30,8 @@ console.log("Hello", name);
 ```
 #### Gitz
 ```gitz
-Make name: text = "Alice"
-say("Hello", name)
+Make name: text = "Alice";
+say("Hello", name);
 ```
 
 ---
@@ -48,10 +48,11 @@ while (x < 10) {
 ```
 #### Gitz
 ```gitz
-Make x: num = 0
-Keep x smaller 10:
-    say(x)
-    x = x plus 1
+Make x: num = 0;
+Keep x smaller 10 {
+    say(x);
+    x = x plus 1;
+}
 ```
 
 ---
@@ -68,10 +69,11 @@ if (x > 5) {
 ```
 #### Gitz
 ```gitz
-When x bigger 5:
-    say("Big number!")
-orElse:
-    say("Small number!")
+When x bigger 5 {
+    say("Big number!");
+} orElse {
+    say("Small number!");
+}
 ```
 
 ---
@@ -86,8 +88,9 @@ function greet(name) {
 ```
 #### Gitz
 ```gitz
-Show greet(name: text) -> text:
-    give "Hello " plus name
+Show greet(name: text) -> text {
+    give "Hello " plus name;
+}
 ```
 
 ---
@@ -101,8 +104,11 @@ console.log(fruits[0]);
 ```
 #### Gitz
 ```gitz
-list fruits: text = ["apple", "banana", "cherry"]
-say(fruits at 0)
+Make fruits: list<text> = ["apple", "banana", "cherry"];
+say(fruits[0]);
 ```
 
-By : Kevin Thomas, Callista Napitupulu, Stanley Gunawan
+### Authors
+- Kevin Thomas
+- Callista Napitupulu
+- Stanley Gunawan
