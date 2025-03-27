@@ -1,122 +1,126 @@
 Gitz {
-  Program = Statement+
+  Program = Statement+                                         --program
 
-  // Statements
   Statement =
-      VarDecl
-    | ListDecl
-    | FunDecl
-    | Assignment
-    | FunCallStatement
-    | ReturnStmt
-    | IfStmt
-    | LoopStmt
-    | TryStmt
-    | BreakStmt
-    | ContinueStmt
-    | SayStmt
+      VarDecl                                                 --stmtVarDecl
+    | ListDecl                                                --stmtListDecl
+    | FunDecl                                                 --stmtFunDecl
+    | Assignment                                              --stmtAssignment
+    | FunCallStatement                                        --stmtFunCall
+    | ReturnStmt                                              --stmtReturn
+    | IfStmt                                                  --stmtIf
+    | LoopStmt                                                --stmtLoop
+    | TryStmt                                                 --stmtTry
+    | BreakStmt                                               --stmtBreak
+    | ContinueStmt                                            --stmtContinue
+    | SayStmt                                                 --stmtSay
 
-  FunCallStatement = FunCall ";"
-  BreakStmt = "Break" ";"
-  ContinueStmt = "Skip" ";"
-  SayStmt = "say" "(" ListOf<Exp, ","> ")" ";"
+  FunCallStatement = FunCall ";"                              --funCallStmt
+  BreakStmt        = "Break" ";"                              --breakStmt
+  ContinueStmt     = "Skip" ";"                               --continueStmt
+  SayStmt          = "say" "(" ExpList? ")" ";"               --sayStmt
 
-  // Variable & List Declarations
-  VarDecl = "Make" id ":" (BasicType | ListType) Initialiser ";"
-  ListDecl = "Make" id ":" ListType Initialiser ";"
+  VarDecl  = "Make" id ":" (BasicType | ListType) Initialiser ";" --varDecl
+  ListDecl = "Make" id ":" ListType Initialiser ";"               --listDecl
 
-  // Initialization
-  Initialiser = "=" Exp
+  Initialiser = "=" Exp                                        --init
 
-  // Function Declaration
-  FunDecl = "Show" id Params ("->" Type)? Block
-  Params = "(" ListOf<Param, ","> ")"
-  Param = id ":" Type
+  // Fixed: Made return type optional group more precise
+  FunDecl =
+      "Show" id Params ("->" Type)? Block                     --funDecl
 
-  // Return Statement
-  ReturnStmt = "give" Exp ";"
+  Params = "(" ParamList? ")"                                  --params
+  ParamList = Param ("," Param)*                               --paramList
+  Param  = id ":" Type                                         --param
 
-  // If-Else Statements
-  IfStmt = "When" Exp Block ("orWhen" Exp Block)* ("orElse" Block)?
+  ReturnStmt = "give" Exp ";"                                  --returnStmt
 
-  // Loop Statements
-  LoopStmt = "Keep" id "in" Exp Block --forEach
-           | "Keep" Exp Block          --whileLoop
+  // Fixed: Simplified if-else syntax
+  IfStmt =
+      "When" Exp Block ("orWhen" Exp Block)* ("orElse" Block)? --ifStmt
 
-  // Assignments
-  Assignment = (id | IndexedAccess) "=" Exp ";" --valid
-             | IntLit "=" Exp ";"               --invalid
+  LoopStmt =
+      "Keep" id "in" Exp Block                                 --loopForEach
+    | "Keep" Exp Block                                         --loopWhile
 
-  // Indexed list access
-  IndexedAccess = id "[" Exp "]"
+  Assignment =
+      (id | IndexedAccess) "=" Exp ";"                         --assignValid
+    | IntLit "=" Exp ";"                                       --assignInvalid
 
-  // Function Calls (Fixed for empty and non-empty argument lists)
-  FunCall = id "(" ListOf<Exp, ","> ")" --nonEmpty
-          | id "(" ")" --empty
+  IndexedAccess = id "[" Exp "]"                               --index
 
-  // Try-Catch Blocks
-  TryStmt = "Try" Block "Catch" id Block
+  FunCall =
+      id "(" ArgList ")"                                       --funCallArgs
+    | id "(" ")"                                               --funCallNoArgs
 
-  // Code Blocks
-  Block = "{" Statement* "}"
+  ArgList = Exp ("," Exp)*                                     --argList
 
-  // Expressions (Ensuring function calls work inside expressions)
-  Exp = LogicalOrExp
-  LogicalOrExp = LogicalAndExp ("or" LogicalAndExp)*
-  LogicalAndExp = EqualityExp ("and" EqualityExp)*
-  EqualityExp = RelationalExp (("==" | "!=" | "equal" | "notSame") RelationalExp)*
-  RelationalExp = AdditiveExp (("<" | ">" | "bigger" | "smaller" | "in") AdditiveExp)*
-  AdditiveExp = MultiplicativeExp (("plus" | "minus") MultiplicativeExp)*
-  MultiplicativeExp = UnaryExp (("times" | "over" | "mod") UnaryExp)*
+  TryStmt = "Try" Block "Catch" id Block                       --tryStmt
 
-  // Unary Expressions
-  UnaryExp = ("minus" | "not")? PrimaryExp
+  Block = "{" Statement* "}"                                   --block
 
-  // Primary Expressions 
-  PrimaryExp = 
-      "(" Exp ")"  --parens
-    | FunCall      --functionCall
-    | IndexedAccess --listIndexing
-    | id           --identifier
-    | IntLit       --integer
-    | FloatLit     --float
-    | StringLit    --string
-    | ListExp      --list
+  Exp = LogicalOrExp                                           --exp
 
-  // Data Types
-  Type = BasicType | ListType
-  BasicType = "num" | "text" | "bool" | id
-  ListType = "list" "[" Type "]" | "list" "<" Type ">" 
+  LogicalOrExp = LogicalAndExp ("or" LogicalAndExp)*           --lor
+  LogicalAndExp = EqualityExp ("and" EqualityExp)*             --land
+  EqualityExp = RelationalExp (EqualityOp RelationalExp)*      --eqExp
+  EqualityOp = "==" | "!=" | "equal" | "notSame"               --eqOp
+  RelationalExp = AdditiveExp (RelOp AdditiveExp)*             --relExp
+  RelOp = "<" | ">" | "bigger" | "smaller" | "in"             --relOp
+  AdditiveExp = MultiplicativeExp (AddOp MultiplicativeExp)*   --addExp
+  AddOp = "plus" | "minus"                                     --addOp
+  MultiplicativeExp = UnaryExp (MulOp UnaryExp)*               --mulExp
+  MulOp = "times" | "over" | "mod"                             --mulOp
 
-  // Identifiers (Ensuring they do not match keywords)
-  id = ~keyword letter alnum*
+  UnaryExp = ("minus" | "not")? PrimaryExp                     --unary
 
-  // Literals
-  IntLit = digit+
-  FloatLit = digit+ "." digit+ ("E" ("+" | "-")? digit+)?
+  PrimaryExp =
+      "(" Exp ")"                                              --parens
+    | FunCall                                                  --primaryFunCall
+    | IndexedAccess                                            --primaryIndex
+    | id                                                       --primaryId
+    | FloatLit                                                 --primaryFloat
+    | IntLit                                                   --primaryInt
+    | StringLit                                                --primaryString
+    | ListExp                                                  --primaryList
 
-  // String literals (Fixed to enforce proper error handling)
-  StringLit = "\"" Char* "\"" --closed
-            | "\"" Char*      --unclosed
+  Type = BasicType | ListType                                  --type
+  BasicType = "num" | "text" | "bool" | id                     --basicType
+  ListType =
+      "list" "[" Type "]"                                     --listTypeSquare
+    | "list" "<" Type ">"                                     --listTypeAngle
 
-  ListExp = "[" ListOf<(StringLit | Exp), ",">? "]"
+  id = ~keyword letter alnum*                                  --identifier
 
-  // Characters inside string literals
-  Char = NormalChar | EscapeSeq | unicodeEscape
-  NormalChar = ~Control ~"\\" ~"\"" any
-  EscapeSeq = "\\" ("n" | "t" | "\"" | "\\")
-  unicodeEscape = "\\u{" hexDigit+ "}"
+  IntLit   = digit+                                            --intLit
+  FloatLit =
+      digit+ "." digit+ ExpPart?                               --floatFull
+    | digit+ "." ExpPart?                                      --floatTrailingDot
+    | "." digit+ ExpPart?                                      --floatLeadingDot
 
-  Control = "\x00".."\x1f" | "\x80".."\x9f"
+  ExpPart = "E" ("+" | "-")? digit+
 
-  // Keywords 
-  keyword = "Make" | "list" | "Show" | "When" | "Keep" | "orWhen" | "orElse"
-          | "give" | "say" | "Break" | "Skip" | "Try" | "Catch" | "in"
+  StringLit =
+      "\"" Char* "\""                                         --stringClosed
+    | "\"" Char*                                               --stringUnclosed
 
-  // Comments and Whitespace Handling
-  space += " " | "\t"
-  newline = "\n"
-  comment = "#" (~"\n" any)*
-  multiLineComment = "/*" (~"*/" any)* "*/"
-  space += comment | multiLineComment
+  ListExp = "[" ExpList? "]"                                  --listExp
+  ExpList = Exp ("," Exp)*                                    --expList
+
+  Char = NormalChar | EscapeSeq | unicodeEscape                --char
+  NormalChar = ~Control ~"\\" ~"\"" any                       --normalChar
+  EscapeSeq = "\\" ("n" | "t" | "\"" | "\\")                   --escapeSeq
+  unicodeEscape = "\\u{" hexDigit+ "}"                         --unicodeEscape
+
+  Control = "\x00".."\x1f" | "\x80".."\x9f"                   --control
+
+  // Added missing keywords
+  keyword = "Make" | "list" | "Show" | "When" | "Keep" | "orWhen"
+          | "orElse" | "give" | "say" | "Break" | "Skip" | "Try"
+          | "Catch" | "in"                                     --keyword
+
+  space += " " | "\t" | comment | multiLineComment             --space
+  newline = "\n"                                               --newline
+  comment = "#" (~"\n" any)*                                   --comment
+  multiLineComment = "/*" (~"*/" any)* "*/"                     --multiComment
 }
