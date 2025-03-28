@@ -34,6 +34,14 @@ export function program(statements) {
     return { kind: "Field", name, type };
   }
   
+  export function tupleType(types) {
+    return { kind: "TupleType", types };
+  }
+  
+  export function mapType(keyType, valueType) {
+    return { kind: "MapType", keyType, valueType };
+  }
+  
   // Functions
   export function functionDeclaration(fun) {
     return { kind: "FunctionDeclaration", fun };
@@ -119,16 +127,19 @@ export function program(statements) {
     return { kind: "EmptyOptional", baseType, type: optionalType(baseType) };
   }
   
-  // For list indexing, we assume the array’s type is of the form "list<...>"
+  export function some(value) {
+    return { kind: "Some", value, type: optionalType(value.type) };
+  }
+  
+  // For list indexing
   export function subscript(array, index) {
-    // A more robust implementation might parse the type string;
-    // here we assume it always starts with "list<" and ends with ">"
-    const base = array.type.slice(5, -1);
+    const base = array.type.startsWith("list<") ? array.type.slice(5, -1) : anyType;
     return { kind: "SubscriptExpression", array, index, type: base };
   }
   
   export function arrayExpression(elements) {
-    return { kind: "ArrayExpression", elements, type: arrayType(elements[0].type) };
+    const elementType = elements.length > 0 ? elements[0].type : anyType;
+    return { kind: "ArrayExpression", elements, type: arrayType(elementType) };
   }
   
   export function emptyArray(type) {
@@ -137,6 +148,22 @@ export function program(statements) {
   
   export function memberExpression(object, op, field) {
     return { kind: "MemberExpression", object, op, field, type: field.type };
+  }
+  
+  export function tupleExpression(elements) {
+    return { 
+      kind: "TupleExpression", 
+      elements, 
+      type: tupleType(elements.map(e => e.type))
+    };
+  }
+  
+  export function mapLiteral(entries, keyType, valueType) {
+    return {
+      kind: "MapLiteral",
+      entries,
+      type: mapType(keyType, valueType)
+    };
   }
   
   export function functionCall(callee, args) {
@@ -149,7 +176,12 @@ export function program(statements) {
         return binary(callee.name, args[0], args[1], callee.type.returnType);
       }
     }
-    return { kind: "FunctionCall", callee, args, type: callee.type.returnType };
+    return { 
+      kind: "FunctionCall", 
+      callee, 
+      args, 
+      type: callee.type?.returnType || anyType 
+    };
   }
   
   export function constructorCall(callee, args) {
@@ -164,13 +196,22 @@ export function program(statements) {
     return { kind: "SayStatement", arguments: args };
   }
   
-  // Added IR nodes for break and continue statements:
+  // Control flow
   export function breakStatement() {
     return { kind: "BreakStatement" };
   }
   
   export function continueStatement() {
     return { kind: "ContinueStatement" };
+  }
+  
+  // Pattern matching
+  export function patternMatch(exp, cases) {
+    return { kind: "PatternMatch", exp, cases };
+  }
+  
+  export function matchCase(pattern, body) {
+    return { kind: "MatchCase", pattern, body };
   }
   
   // List types and literals
@@ -191,6 +232,7 @@ export function program(statements) {
     any: anyType,
     π: variable("π", false, numType),
     print: intrinsicFunction("print", functionType([anyType], voidType)),
+    println: intrinsicFunction("println", functionType([anyType], voidType)),
     sqrt: intrinsicFunction("sqrt", functionType([numType], numType)),
     sin: intrinsicFunction("sin", functionType([numType], numType)),
     cos: intrinsicFunction("cos", functionType([numType], numType)),
@@ -198,12 +240,24 @@ export function program(statements) {
     ln: intrinsicFunction("ln", functionType([numType], numType)),
     hypot: intrinsicFunction("hypot", functionType([numType, numType], numType)),
     bytes: intrinsicFunction("bytes", functionType([textType], listType(numType))),
-    codepoints: intrinsicFunction("codepoints", functionType([textType], listType(numType)))
+    codepoints: intrinsicFunction("codepoints", functionType([textType], listType(numType))),
+    len: intrinsicFunction("len", functionType([listType(anyType)], numType)),
+    keys: intrinsicFunction("keys", functionType([mapType(anyType, anyType)], listType(anyType))),
+    values: intrinsicFunction("values", functionType([mapType(anyType, anyType)], listType(anyType)))
   });
   
-  // Patch JavaScript primitives with Gitz types.
+  // Type checking utilities
+  export function isListType(type) {
+    return typeof type === 'string' && type.startsWith('list<');
+  }
+  
+  export function getListElementType(type) {
+    return isListType(type) ? type.slice(5, -1) : anyType;
+  }
+  
+  // Patch JavaScript primitives with Gitz types
   String.prototype.type = textType;
   Number.prototype.type = numType;
   BigInt.prototype.type = numType;
   Boolean.prototype.type = boolType;
-  
+  Array.prototype.type = listType(anyType);

@@ -178,39 +178,45 @@ export default function analyze(match) {
       return core.returnStatement(expr);
     },
 
-    IfStmt_ifStmt(whenKeyword, exp, block, orWhenClauses, orElseGroup) {
+    IfStmt_ifStmt(whenKeyword, exp, block, orWhenClauses, orElseKeyword, orElseBlock, semi, _) {
       const test = exp.rep();
       mustHaveBooleanType(test, { at: exp });
       const consequent = block.rep();
       
       let alternate = null;
+      
+      // Handle orWhen clauses if they exist
       if (orWhenClauses.children.length > 0) {
+        // Process first orWhen clause
         const firstOrWhen = orWhenClauses.children[0];
         alternate = core.ifStatement(
-          firstOrWhen.children[1].rep(), // Exp of the first orWhen
-          firstOrWhen.children[2].rep(), // Block of the first orWhen
+          firstOrWhen.children[1].rep(), // The condition (Exp)
+          firstOrWhen.children[2].rep(), // The block
           null
         );
-    
+        
+        // Process remaining orWhen clauses
         let current = alternate;
         for (let i = 1; i < orWhenClauses.children.length; i++) {
           const nextOrWhen = orWhenClauses.children[i];
           current.alternate = core.ifStatement(
-            nextOrWhen.children[1].rep(), // Exp of next orWhen
-            nextOrWhen.children[2].rep(), // Block of next orWhen
+            nextOrWhen.children[1].rep(), // The condition (Exp)
+            nextOrWhen.children[2].rep(), // The block
             null
           );
           current = current.alternate;
         }
-    
+        
         // Handle orElse if present
-        if (orElseGroup) {
-          current.alternate = orElseGroup.children[1].rep(); // The else Block
+        if (orElseBlock) {
+          current.alternate = orElseBlock.rep(); // The else block
         }
-      } else if (orElseGroup) {
-        alternate = orElseGroup.children[1].rep(); // The else Block
+      } 
+      // Handle standalone orElse (no orWhen clauses)
+      else if (orElseBlock) {
+        alternate = orElseBlock.rep(); // The else block
       }
-    
+      
       return core.ifStatement(test, consequent, alternate);
     },
 
