@@ -11,7 +11,7 @@ class Context {
 
   add(name, entity) {
     if (this.locals.has(name)) {
-      throw new Error(`Identifier '${name}' already declared`);
+      throw new Error(`Identifier ${name} already declared`);
     }
     this.locals.set(name, entity);
   }
@@ -19,14 +19,23 @@ class Context {
   lookup(name) {
     if (this.locals.has(name)) {
       return this.locals.get(name);
-    } else if (this.parent) {
+    }
+    if (this.parent) {
       return this.parent.lookup(name);
     }
-    throw new Error(`Identifier '${name}' is not declared`);
+    throw new Error(`Identifier ${name} is not declared`);
   }
 
   static root() {
-    return new Context({ locals: new Map(Object.entries(core.standardLibrary)) });
+    const ctx = new Context({
+      locals: new Map(Object.entries({
+        ...core.standardLibrary,
+        "π": { kind: "Variable", name: "π", mutable: false, type: core.numType }
+      }))
+    });
+    ctx.add("true", { kind: "BooleanLiteral", value: true, type: core.boolType });
+    ctx.add("false", { kind: "BooleanLiteral", value: false, type: core.boolType });
+    return ctx;
   }
 
   newChildContext(props = {}) {
@@ -51,7 +60,7 @@ function mustNotAlreadyBeDeclared(name, at) {
     context.lookup(name);
     must(false, `Identifier ${name} already declared`, at);
   } catch (e) {
-    // Not declared - OK
+    // Not declared – OK
   }
 }
 
@@ -64,7 +73,7 @@ function mustHaveNumericType(e, at) {
 }
 
 function mustHaveBooleanType(e, at) {
-  must(e.type === core.bool, "Expected a boolean", at);
+  must(e.type === core.boolType, "Expected a boolean", at);
 }
 
 function mustBothHaveSameType(e1, e2, at) {
@@ -78,6 +87,7 @@ function mustAllHaveSameType(exprs, at) {
 }
 
 function mustBeAssignable(source, { toType }, at) {
+  if (source.type === "any" || toType === "any") return;
   must(source.type === toType, `Cannot assign ${source.type} to ${toType}`, at);
 }
 
@@ -93,6 +103,11 @@ function mustBeInLoop(statement, at) {
   must(context.inLoop, `${statement} used outside of a loop`, at);
 }
 
+/* 
+  Helper for if–elseif clauses.
+  (Assumes that the semantic action for OrWhenClause returns an object of the form { condition, block }.)
+*/
+
 export default function analyze(match) {
   if (!match.succeeded()) {
     throw new Error(match.message);
@@ -102,51 +117,70 @@ export default function analyze(match) {
   const semantics = match.matcher.grammar.createSemantics();
 
   semantics.addOperation("rep", {
+    _terminal() {
+      return this.sourceString;
+    },
+    _iter(...children) {
+      return children.map(c => c.rep());
+    },
+    _nonterminal(...children) {
+      return children[0].rep();
+    },
+
     Program_program(statementList) {
       return core.program(statementList.children.map(s => s.rep()));
     },
 
-    VarDecl_varDecl(make, id, colon, type, init, semi) {
+    VarDecl_varDecl(make, id, colon, type, initOpt, semi) {
       const name = id.sourceString;
       mustNotAlreadyBeDeclared(name, { at: id });
-      const initializer = init.rep();
       const varType = type.rep();
       const variable = core.variable(name, true, varType);
-      mustBeAssignable(initializer, { toType: variable.type }, { at: id });
+
+      if (initOpt.children.length > 0) {
+        const initializer = initOpt.children[0].rep();
+        mustBeAssignable(initializer, { toType: variable.type }, { at: id });
+        context.add(name, variable);
+        return core.variableDeclaration(variable, initializer);
+      }
       context.add(name, variable);
-      return core.variableDeclaration(variable, initializer);
+      return core.variableDeclaration(variable, core.emptyInitializer(varType));
     },
 
-    ListDecl_listDecl(make, id, colon, type, init, semi) {
+    ListDecl_listDecl(make, id, colon, type, initOpt, semi) {
       const name = id.sourceString;
       mustNotAlreadyBeDeclared(name, { at: id });
-      const initializer = init.rep();
       const varType = type.rep();
       const variable = core.variable(name, true, varType);
-      mustBeAssignable(initializer, { toType: variable.type }, { at: id });
+
+      if (initOpt.children.length > 0) {
+        const initializer = initOpt.children[0].rep();
+        mustBeAssignable(initializer, { toType: variable.type }, { at: id });
+        context.add(name, variable);
+        return core.variableDeclaration(variable, initializer);
+      }
       context.add(name, variable);
-      return core.variableDeclaration(variable, initializer);
+      return core.variableDeclaration(variable, core.emptyInitializer(varType));
     },
 
     Initialiser_init(eq, exp) {
       return exp.rep();
     },
 
-    FunDecl_funDecl(show, id, params, arrow, retType, block) {
+    FunDecl_funDecl(show, id, params, arrowOpt, retTypeOpt, block) {
       const name = id.sourceString;
       mustNotAlreadyBeDeclared(name, { at: id });
       const paramList = params.rep();
-      const returnType = retType ? retType.rep() : core.voidType;
-      
-      // Corrected function call with proper parentheses
+      const returnType = retTypeOpt.children.length > 0 ? retTypeOpt.children[0].rep() : core.voidType;
+
       const fun = core.fun(
         name,
         paramList,
         [],
-        core.functionType(paramList.map(p => p.type)),
+        core.functionType(paramList.map(p => p.type), returnType),
         returnType
       );
-      
+
       context.add(name, fun);
       const saved = context;
       context = context.newChildContext({ inLoop: false, currentFunction: fun });
@@ -161,70 +195,70 @@ export default function analyze(match) {
     },
 
     ParamList_paramList(first, comma, rest) {
-      return [first.rep(), ...rest.children.map(child => child.children[1].rep())];
+      return [first.rep(), ...rest.children.map(child =>
+        (child.children[1] ? child.children[1].rep() : child.rep())
+      )];
     },
 
     Param_param(id, colon, type) {
       const param = core.variable(id.sourceString, false, type.rep());
       mustNotAlreadyBeDeclared(param.name, { at: id });
-      context.add(param.name, param);
       return param;
     },
 
     ReturnStmt_returnStmt(give, exp, semi) {
       const expr = exp.rep();
       must(context.currentFunction, "Return used outside of a function", { at: give });
-      mustBeAssignable(expr, { toType: context.currentFunction.type.returnType }, { at: give });
+      const expectedType = context.currentFunction.returnType;
+      if (expectedType === core.voidType) {
+        // If function is void, no non-void value should be returned.
+        throw new Error(`Cannot assign ${expr.type} to void`, { at: give });
+      } else {
+        mustBeAssignable(expr, { toType: expectedType }, { at: give });
+      }
       return core.returnStatement(expr);
     },
 
-    IfStmt_ifStmt(whenKeyword, exp, block, orWhenClauses, orElseKeyword, orElseBlock, semi, _) {
+    // Updated IfStmt semantic action: now with six parameters.
+    IfStmt_ifStmt(whenKeyword, exp, block, orWhenClauses, _orElse, orElseBlock) {
       const test = exp.rep();
       mustHaveBooleanType(test, { at: exp });
       const consequent = block.rep();
-      
+
       let alternate = null;
-      
-      // Handle orWhen clauses if they exist
-      if (orWhenClauses.children.length > 0) {
-        // Process first orWhen clause
-        const firstOrWhen = orWhenClauses.children[0];
-        alternate = core.ifStatement(
-          firstOrWhen.children[1].rep(), // The condition (Exp)
-          firstOrWhen.children[2].rep(), // The block
-          null
-        );
-        
-        // Process remaining orWhen clauses
+      const orWhenArr = orWhenClauses.rep(); // Each element is expected to be an object { condition, block }
+      if (Array.isArray(orWhenArr) && orWhenArr.length > 0) {
+        alternate = core.ifStatement(orWhenArr[0].condition, orWhenArr[0].block, null);
         let current = alternate;
-        for (let i = 1; i < orWhenClauses.children.length; i++) {
-          const nextOrWhen = orWhenClauses.children[i];
-          current.alternate = core.ifStatement(
-            nextOrWhen.children[1].rep(), // The condition (Exp)
-            nextOrWhen.children[2].rep(), // The block
-            null
-          );
+        for (let i = 1; i < orWhenArr.length; i++) {
+          current.alternate = core.ifStatement(orWhenArr[i].condition, orWhenArr[i].block, null);
           current = current.alternate;
         }
-        
-        // Handle orElse if present
-        if (orElseBlock) {
-          current.alternate = orElseBlock.rep(); // The else block
+        if (orElseBlock.numChildren > 0) {
+          current.alternate = orElseBlock.rep();
         }
-      } 
-      // Handle standalone orElse (no orWhen clauses)
-      else if (orElseBlock) {
-        alternate = orElseBlock.rep(); // The else block
+      } else if (orElseBlock.numChildren > 0) {
+        alternate = orElseBlock.rep();
       }
-      
+
       return core.ifStatement(test, consequent, alternate);
+    },
+
+    // Semantic action for OrWhenClause.
+    OrWhenClause_orWhenClause(_orWhen, exp, block) {
+      return { condition: exp.rep(), block: block.rep() };
+    },
+
+    // (Block_block updated to preserve the current context without reinitializing)
+    Block_block(open, stmtsOpt, close) {
+      return stmtsOpt.children.length > 0 ? stmtsOpt.children[0].rep() : [];
     },
 
     LoopStmt_loopForEach(keep, id, inKeyword, exp, block) {
       const iterName = id.sourceString;
       const collection = exp.rep();
-      const baseType = collection.type.startsWith("list<") 
-        ? collection.type.slice(5, -1) 
+      const baseType = collection.type.startsWith("list<")
+        ? collection.type.slice(5, -1)
         : "any";
       const variable = core.variable(iterName, true, baseType);
       context.add(iterName, variable);
@@ -255,8 +289,8 @@ export default function analyze(match) {
       return core.continueStatement();
     },
 
-    SayStmt_sayStmt(say, openParen, args, closeParen, semi) {
-      const argsList = args.children.length > 0 ? args.rep() : [];
+    SayStmt_sayStmt(say, openParen, argsOpt, closeParen, semi) {
+      const argsList = argsOpt.children.length > 0 ? argsOpt.children[0].rep() : [];
       return core.sayStatement(argsList);
     },
 
@@ -283,16 +317,23 @@ export default function analyze(match) {
       return call.rep();
     },
 
-    FunCall_funCallArgs(id, open, argList, close) {
+    FunCall_funCallArgs(id, open, argListOpt, close) {
       const target = context.lookup(id.sourceString);
-      const args = argList.rep();
+      const args = argListOpt.children.length > 0 ? argListOpt.children[0].rep() : [];
       must(target.type.kind === "FunctionType", `${id.sourceString} is not a function`, { at: id });
       must(
         target.type.paramTypes.length === args.length,
         `Expected ${target.type.paramTypes.length} arguments but got ${args.length}`,
         { at: id }
       );
-      args.forEach((arg, i) => mustBeAssignable(arg, { toType: target.type.paramTypes[i] }, { at: id }));
+      args.forEach((arg, i) => {
+        const expected = target.type.paramTypes[i];
+        if (expected === core.numType) {
+          mustHaveNumericType(arg, { at: id });
+        } else {
+          mustBeAssignable(arg, { toType: expected }, { at: id });
+        }
+      });
       return core.functionCall(target, args);
     },
 
@@ -304,7 +345,16 @@ export default function analyze(match) {
     },
 
     ArgList_argList(first, comma, rest) {
-      return [first.rep(), ...rest.children.map(child => child.children[1].rep())];
+      const results = [first.rep()];
+      if (rest.children.length > 0) {
+        results.push(...rest.children.map(child =>
+          (child.children[1] ? child.children[1].rep() : child.rep())
+        ));
+      }
+      if (results.length > 0) {
+        mustAllHaveSameType(results, { at: first });
+      }
+      return results;
     },
 
     TryStmt_tryStmt(tryKeyword, block1, catchKeyword, id, block2) {
@@ -318,17 +368,6 @@ export default function analyze(match) {
       return core.tryCatch(block1.rep(), errorVar, catchBlock);
     },
 
-    Block_block(open, stmts, close) {
-      const saved = context;
-      context = context.newChildContext({ 
-        inLoop: saved.inLoop,
-        currentFunction: saved.currentFunction
-      });
-      const statements = stmts.children.map(s => s.rep());
-      context = saved;
-      return statements;
-    },
-
     Exp_exp(exp) {
       return exp.rep();
     },
@@ -336,10 +375,12 @@ export default function analyze(match) {
     LogicalOrExp_lor(first, op, rest) {
       let expr = first.rep();
       for (const child of rest.children) {
-        const right = child.children[1].rep();
+        let right = child.children[1]
+          ? child.children[1].rep()
+          : (() => { throw new Error("Invalid logical or expression structure"); })();
         mustHaveBooleanType(expr, { at: first });
-        mustHaveBooleanType(right, { at: child.children[1] });
-        expr = core.binary("or", expr, right, core.bool);
+        mustHaveBooleanType(right, { at: child.children[1] || child });
+        expr = core.binary("or", expr, right, core.boolType);
       }
       return expr;
     },
@@ -347,10 +388,12 @@ export default function analyze(match) {
     LogicalAndExp_land(first, op, rest) {
       let expr = first.rep();
       for (const child of rest.children) {
-        const right = child.children[1].rep();
+        let right = child.children[1]
+          ? child.children[1].rep()
+          : (() => { throw new Error("Invalid logical and expression structure"); })();
         mustHaveBooleanType(expr, { at: first });
-        mustHaveBooleanType(right, { at: child.children[1] });
-        expr = core.binary("and", expr, right, core.bool);
+        mustHaveBooleanType(right, { at: child.children[1] || child });
+        expr = core.binary("and", expr, right, core.boolType);
       }
       return expr;
     },
@@ -358,9 +401,11 @@ export default function analyze(match) {
     EqualityExp_eqExp(first, op, rest) {
       let expr = first.rep();
       for (const child of rest.children) {
-        const right = child.children[1].rep();
-        mustBothHaveSameType(expr, right, { at: child.children[0] });
-        expr = core.binary(child.children[0].sourceString, expr, right, core.bool);
+        let right = child.children[1]
+          ? child.children[1].rep()
+          : (() => { throw new Error("Invalid equality expression structure"); })();
+        mustBothHaveSameType(expr, right, { at: child.children[0] || child });
+        expr = core.binary(child.children[0].sourceString, expr, right, core.boolType);
       }
       return expr;
     },
@@ -368,9 +413,11 @@ export default function analyze(match) {
     RelationalExp_relExp(first, op, rest) {
       let expr = first.rep();
       for (const child of rest.children) {
-        const right = child.children[1].rep();
-        mustBothHaveSameType(expr, right, { at: child.children[0] });
-        expr = core.binary(child.children[0].sourceString, expr, right, core.bool);
+        let right = child.children[1]
+          ? child.children[1].rep()
+          : (() => { throw new Error("Invalid relational expression structure"); })();
+        mustBothHaveSameType(expr, right, { at: child.children[0] || child });
+        expr = core.binary(child.children[0].sourceString, expr, right, core.boolType);
       }
       return expr;
     },
@@ -378,14 +425,17 @@ export default function analyze(match) {
     AdditiveExp_addExp(first, op, rest) {
       let expr = first.rep();
       for (const child of rest.children) {
-        const right = child.children[1].rep();
-        if (child.children[0].sourceString === "plus") {
+        let opToken = child.children[0] ? child.children[0].sourceString : null;
+        let right = child.children[1]
+          ? child.children[1].rep()
+          : (() => { throw new Error("Invalid additive expression structure"); })();
+        if (opToken === "plus") {
           must(expr.type === core.numType || expr.type === core.textType, "Expected number or string", { at: first });
         } else {
           mustHaveNumericType(expr, { at: first });
         }
-        mustBothHaveSameType(expr, right, { at: child.children[0] });
-        expr = core.binary(child.children[0].sourceString, expr, right, expr.type);
+        mustBothHaveSameType(expr, right, { at: child.children[0] || child });
+        expr = core.binary(opToken, expr, right, expr.type);
       }
       return expr;
     },
@@ -393,10 +443,12 @@ export default function analyze(match) {
     MultiplicativeExp_mulExp(first, op, rest) {
       let expr = first.rep();
       for (const child of rest.children) {
-        const right = child.children[1].rep();
+        let right = child.children[1]
+          ? child.children[1].rep()
+          : (() => { throw new Error("Invalid multiplicative expression structure"); })();
         mustHaveNumericType(expr, { at: first });
-        mustHaveNumericType(right, { at: child.children[1] });
-        mustBothHaveSameType(expr, right, { at: child.children[0] });
+        mustHaveNumericType(right, { at: child.children[1] || child });
+        mustBothHaveSameType(expr, right, { at: child.children[0] || child });
         expr = core.binary(child.children[0].sourceString, expr, right, expr.type);
       }
       return expr;
@@ -412,7 +464,7 @@ export default function analyze(match) {
       }
       if (op === "not") {
         mustHaveBooleanType(expr, { at: primary });
-        return core.unary("not", expr, core.bool);
+        return core.unary("not", expr, core.boolType);
       }
       throw new Error(`Unsupported unary operator ${op}`);
     },
@@ -437,25 +489,39 @@ export default function analyze(match) {
     },
 
     PrimaryExp_primaryFloat(floatLit) {
-      const num = parseFloat(floatLit.sourceString);
-      num.type = core.numType;
-      return num;
+      return {
+        kind: "NumberLiteral",
+        value: parseFloat(floatLit.sourceString),
+        type: core.numType
+      };
     },
 
     PrimaryExp_primaryInt(intLit) {
-      const num = parseInt(intLit.sourceString, 10);
-      num.type = core.numType;
-      return num;
+      return {
+        kind: "NumberLiteral",
+        value: parseInt(intLit.sourceString, 10),
+        type: core.numType
+      };
     },
 
     PrimaryExp_primaryString(str) {
-      const s = str.sourceString.slice(1, -1);
-      s.type = core.textType;
-      return s;
+      return {
+        kind: "StringLiteral",
+        value: str.sourceString.slice(1, -1),
+        type: core.textType
+      };
     },
 
     PrimaryExp_primaryList(listExp) {
       return listExp.rep();
+    },
+
+    PrimaryExp_primaryBool(boolLit) {
+      return {
+        kind: "BooleanLiteral",
+        value: boolLit.sourceString === "true",
+        type: core.boolType
+      };
     },
 
     BasicType_basicType(basic) {
@@ -463,35 +529,51 @@ export default function analyze(match) {
     },
 
     ListType_listTypeSquare(listKeyword, open, typeNode, close) {
-      return core.listType(typeNode.rep());
+      const base = typeNode.rep();
+      if (![core.numType, core.textType, core.boolType].includes(base)) {
+        throw new Error("Type expected");
+      }
+      return core.listType(base);
     },
 
     ListType_listTypeAngle(listKeyword, open, typeNode, close) {
-      return core.listType(typeNode.rep());
+      const base = typeNode.rep();
+      if (![core.numType, core.textType, core.boolType].includes(base)) {
+        throw new Error("Type expected");
+      }
+      return core.listType(base);
     },
 
     FloatLit_floatFull(whole, point, fraction, expPart) {
-      const num = parseFloat(whole.sourceString + point.sourceString + fraction.sourceString);
-      num.type = core.numType;
-      return num;
+      return {
+        kind: "NumberLiteral",
+        value: parseFloat(whole.sourceString + point.sourceString + fraction.sourceString),
+        type: core.numType
+      };
     },
 
     FloatLit_floatTrailingDot(whole, point, expPart) {
-      const num = parseFloat(whole.sourceString + point.sourceString);
-      num.type = core.numType;
-      return num;
+      return {
+        kind: "NumberLiteral",
+        value: parseFloat(whole.sourceString + point.sourceString),
+        type: core.numType
+      };
     },
 
     FloatLit_floatLeadingDot(point, fraction, expPart) {
-      const num = parseFloat(point.sourceString + fraction.sourceString);
-      num.type = core.numType;
-      return num;
+      return {
+        kind: "NumberLiteral",
+        value: parseFloat(point.sourceString + fraction.sourceString),
+        type: core.numType
+      };
     },
 
     StringLit_stringClosed(openQuote, chars, closeQuote) {
-      const s = chars.sourceString;
-      s.type = core.textType;
-      return s;
+      return {
+        kind: "StringLiteral",
+        value: chars.sourceString,
+        type: core.textType
+      };
     },
 
     StringLit_stringUnclosed(openQuote, chars) {
@@ -499,18 +581,24 @@ export default function analyze(match) {
     },
 
     ListExp_listExp(open, expListOpt, close) {
-      if (expListOpt.children.length === 0) {
-        return core.listLiteral([], core.listType("any"));
-      }
-      const elements = expListOpt.rep();
+      const elements = expListOpt.children.length > 0 ? expListOpt.children[0].rep() : [];
       const elementType = elements.length > 0 ? elements[0].type : "any";
-      mustAllHaveSameType(elements, { at: open });
+      if (elements.length > 0) {
+        mustAllHaveSameType(elements, { at: open });
+      }
       return core.listLiteral(elements, core.listType(elementType));
     },
 
     ExpList_expList(first, comma, rest) {
-      const results = [first.rep(), ...rest.children.map(child => child.children[1].rep())];
-      mustAllHaveSameType(results, { at: first });
+      const results = [first.rep()];
+      if (rest.children.length > 0) {
+        results.push(...rest.children.map(child =>
+          (child.children[1] ? child.children[1].rep() : child.rep())
+        ));
+      }
+      if (results.length > 0) {
+        mustAllHaveSameType(results, { at: first });
+      }
       return results;
     }
   });

@@ -47,12 +47,25 @@ export function program(statements) {
     return { kind: "FunctionDeclaration", fun };
   }
   
-  export function fun(name, params = [], body = [], type = null) {
-    return { kind: "Function", name, params, body, type };
+  export function fun(name, params = [], body = [], type = null, returnType = voidType) {
+    return { 
+      kind: "Function", 
+      name, 
+      params, 
+      body, 
+      type: type || functionType(params.map(p => p.type), returnType),
+      returnType 
+    };
   }
   
   export function intrinsicFunction(name, type) {
-    return { kind: "Function", name, type, intrinsic: true };
+    return { 
+      kind: "Function", 
+      name, 
+      type, 
+      intrinsic: true,
+      returnType: type.returnType || voidType
+    };
   }
   
   // Composite types
@@ -60,8 +73,12 @@ export function program(statements) {
     return { kind: "ArrayType", baseType };
   }
   
-  export function functionType(paramTypes, returnType) {
-    return { kind: "FunctionType", paramTypes, returnType };
+  export function functionType(paramTypes, returnType = voidType) {
+    return { 
+      kind: "FunctionType", 
+      paramTypes, 
+      returnType 
+    };
   }
   
   export function optionalType(baseType) {
@@ -108,7 +125,13 @@ export function program(statements) {
   }
   
   export function forStatement(iterator, collection, body) {
-    return { kind: "ForStatement", iterator, collection, body };
+    return { 
+      kind: "ForStatement", 
+      iterator, 
+      collection, 
+      body,
+      type: voidType
+    };
   }
   
   export function conditional(test, consequent, alternate, type) {
@@ -146,6 +169,10 @@ export function program(statements) {
     return { kind: "EmptyArray", type };
   }
   
+  export function emptyInitializer(type = anyType) {
+    return { kind: "EmptyInitializer", type };
+  }
+  
   export function memberExpression(object, op, field) {
     return { kind: "MemberExpression", object, op, field, type: field.type };
   }
@@ -169,7 +196,11 @@ export function program(statements) {
   export function functionCall(callee, args) {
     if (callee.intrinsic) {
       if (callee.type.returnType === voidType) {
-        return { kind: callee.name.replace(/^\p{L}/u, c => c.toUpperCase()), args };
+        return { 
+          kind: callee.name.replace(/^\p{L}/u, c => c.toUpperCase()), 
+          args,
+          type: voidType
+        };
       } else if (callee.type.paramTypes.length === 1) {
         return unary(callee.name, args[0], callee.type.returnType);
       } else {
@@ -189,20 +220,30 @@ export function program(statements) {
   }
   
   export function tryCatch(tryBlock, errorVar, catchBlock) {
-    return { kind: "TryStatement", tryBlock, errorVar, catchBlock };
+    return { 
+      kind: "TryStatement", 
+      tryBlock, 
+      errorVar, 
+      catchBlock,
+      type: voidType
+    };
   }
   
   export function sayStatement(args) {
-    return { kind: "SayStatement", arguments: args };
+    return { 
+      kind: "SayStatement", 
+      arguments: args,
+      type: voidType
+    };
   }
   
   // Control flow
   export function breakStatement() {
-    return { kind: "BreakStatement" };
+    return { kind: "BreakStatement", type: voidType };
   }
   
   export function continueStatement() {
-    return { kind: "ContinueStatement" };
+    return { kind: "ContinueStatement", type: voidType };
   }
   
   // Pattern matching
@@ -215,15 +256,20 @@ export function program(statements) {
   }
   
   // List types and literals
-  export function listType(baseType) {
+  export function listType(baseType = anyType) {
     return `list<${baseType}>`;
   }
   
   export function listLiteral(elements, type) {
-    return { kind: "ListLiteral", elements, type };
+    const elementType = elements.length > 0 ? elements[0].type : anyType;
+    return { 
+      kind: "ListLiteral", 
+      elements, 
+      type: type || `list<${elementType}>`
+    };
   }
   
-  // Standard Library definitions and type patching
+  // Enhanced Standard Library with proper typing
   export const standardLibrary = Object.freeze({
     num: numType,
     text: textType,
@@ -243,7 +289,8 @@ export function program(statements) {
     codepoints: intrinsicFunction("codepoints", functionType([textType], listType(numType))),
     len: intrinsicFunction("len", functionType([listType(anyType)], numType)),
     keys: intrinsicFunction("keys", functionType([mapType(anyType, anyType)], listType(anyType))),
-    values: intrinsicFunction("values", functionType([mapType(anyType, anyType)], listType(anyType)))
+    values: intrinsicFunction("values", functionType([mapType(anyType, anyType)], listType(anyType))),
+    range: intrinsicFunction("range", functionType([numType, numType], listType(numType)))
   });
   
   // Type checking utilities
