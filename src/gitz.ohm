@@ -16,6 +16,7 @@ Gitz {
     | BreakStmt                                               --stmtBreak
     | ContinueStmt                                            --stmtContinue
     | SayStmt                                                 --stmtSay
+    | "(" Exp ")" ";"                                         --parenStmt
 
   // Control flow statements
   FunCallStatement = FunCall ";"                              --funCallStmt
@@ -37,11 +38,11 @@ Gitz {
   ParamList = Param ("," Param)*                              --paramList
   Param  = id ":" Type                                        --param
 
-  ReturnStmt = "give" Exp ";"                                 --returnStmt
+  ReturnStmt = "give" Exp? ";"                                --returnStmt
 
   // Control structures
   IfStmt =
-      "When" Exp Block (OrWhenClause)* ("orElse" Block)?       --ifStmt
+      "When" Exp Block (OrWhenClause)* ("orElse" Block)?      --ifStmt
 
   OrWhenClause = "orWhen" Exp Block                           --orWhenClause
 
@@ -64,10 +65,12 @@ Gitz {
 
   TryStmt = "Try" Block "Catch" id Block                      --tryStmt
 
-  Block = "{" Statement* "}"                                  --block
+  Block = "{" (Statement | FunDecl)* "}"                      --block
 
   // Expression hierarchy
-  Exp = LogicalOrExp                                          --exp
+  Exp = ConditionalExp                                        --exp
+
+  ConditionalExp = LogicalOrExp                               --conditional
 
   LogicalOrExp = LogicalAndExp ("or" LogicalAndExp)*          --lor
   LogicalAndExp = EqualityExp ("and" EqualityExp)*            --land
@@ -103,7 +106,7 @@ Gitz {
     | "list" "<" Type ">"                                     --listTypeAngle
 
   // Identifiers
-  id = ~keyword letter alnum*                                 --identifier
+  id = ~reservedKeyword letter alnum*                         --identifier
 
   // Literals
   IntLit   = digit+                                           --intLit
@@ -129,17 +132,18 @@ Gitz {
 
   Control = "\x00".."\x1f" | "\x80".."\x9f"                  --control
 
-  // Keywords
-  keyword = "Make" | "list" | "Show" | "When" | "Keep" | "orWhen" 
-      | "orElse" | "give" | "say" | "Break" | "Skip" | "Try" 
-      | "Catch" 
-      | "plus" | "minus" | "times" | "over" | "mod" 
-      | "equal" | "notSame" | "bigger" | "smaller" | "in" 
-      | "and" | "or" | "not" | "true" | "false" 
-                                          --keyword
+  // Keywords - Split into reserved and operators
+  reservedKeyword = 
+    "Make" | "list" | "Show" | "When" | "Keep" | "orWhen" 
+    | "orElse" | "give" | "say" | "Break" | "Skip" | "Try" 
+    | "Catch"                                                --reserved
+
+  operatorKeyword =
+    "plus" | "minus" | "times" | "over" | "mod" 
+    | "equal" | "notSame" | "bigger" | "smaller" | "in" 
+    | "and" | "or" | "not"                                   --operators
 
   // Whitespace and comments
-  // Using built-in space handling with custom additions
   space += comment | multiLineComment
   comment = "#" (~"\n" any)*                                 --comment
   multiLineComment = "/*" (~"*/" any)* "*/"                  --multiComment
