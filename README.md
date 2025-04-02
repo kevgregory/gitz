@@ -17,6 +17,26 @@ Gitz is perfect for those who think programming should have more personality. If
 - **Keep Lists:** Use `list` to store multiple things.
 - **Static Typing:** Even though Gitz **feels casual**, types **must match**.
 
+## Static Analysis and Type Checking
+Our compiler for Gitz includes a robust static analyzer (implemented in analyzer.js) that performs several compile-time checks to catch errors before the program runs. The static analyzer ensures that:
+
+**Scope Resolution:**
+Variables must be declared before use. Each block or function creates a new context so that identifiers are properly scoped, and redeclarations are prevented.
+
+**Static Type Checking:**
+All expressions and assignments are validated to ensure that types are consistent. Arithmetic, boolean expressions, and assignments are checked so that only compatible types are used. For example, assigning a boolean value to a variable declared as a number will trigger an error.
+
+**Function Parameter Matching:**
+The analyzer verifies that functions are called with the correct number of arguments and that each argument matches its parameter’s declared type. Additionally, the return statement within a function must produce a value that matches the function’s declared return type.
+
+**Control Flow Enforcement:**
+Control flow constructs are rigorously checked. break and continue statements are allowed only within loops, and return statements are only permitted inside functions with a matching return type.
+
+**List Type Consistency:**
+For list literals, the analyzer ensures that all elements are of the same type. If a list is declared with a specific element type, every element must conform to that type.
+
+While these static checks catch many common errors at compile time, some dynamic behaviors (like runtime values and certain library operations) are deferred to execution.
+
 ---
 
 ## Examples
