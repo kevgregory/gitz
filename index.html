@@ -1,46 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Gitz - The Vibable Programming Language</title>
   <style>
     /* Global Styles */
+    * {
+      box-sizing: border-box;
+    }
     body {
       margin: 0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: #1a1a1a;
-      color: #f0f0f0;
-      line-height: 1.6;
+      background: linear-gradient(135deg, #000, #0d47a1);
+      color: #e0e0e0;
+      overflow-x: hidden;
     }
     a {
       color: #66ccff;
       text-decoration: none;
+      transition: color 0.3s ease;
     }
     a:hover {
-      text-decoration: underline;
+      color: #ffffff;
     }
     header, footer {
       text-align: center;
       padding: 2rem 1rem;
-      background: linear-gradient(135deg, #000000, #0d47a1);
-      color: #fff;
+      background: rgba(0, 0, 0, 0.8);
+      position: relative;
+      z-index: 1;
+    }
+    header {
+      background: linear-gradient(135deg, #000, #0d47a1);
     }
     header img {
       max-width: 120px;
       margin-bottom: 1rem;
+      animation: bounce 2s infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
     }
     main {
       max-width: 1000px;
       margin: 2rem auto;
       padding: 0 1rem;
+      animation: fadeIn 1s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     section {
-      background: #262626;
+      background: rgba(20, 20, 20, 0.9);
       margin: 1rem 0;
       padding: 1.5rem;
       border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7);
+      animation: fadeIn 1s ease-out;
     }
     h2 {
       border-bottom: 2px solid #444;
@@ -54,12 +73,14 @@
       overflow-x: auto;
       border-radius: 5px;
       margin: 1rem 0;
+      font-size: 0.95rem;
     }
     /* Developer Section */
     .developer {
       display: flex;
       align-items: center;
       margin-bottom: 1rem;
+      animation: fadeIn 1s ease-out;
     }
     .developer img {
       width: 80px;
@@ -72,23 +93,28 @@
     .repo-link {
       text-align: center;
       margin: 2rem 0;
+      animation: fadeIn 1s ease-out;
     }
     .repo-link a {
       display: inline-block;
-      padding: 0.6rem 1.2rem;
+      padding: 0.8rem 1.4rem;
       border: 2px solid #66ccff;
       border-radius: 4px;
       transition: background 0.3s, color 0.3s;
+      font-weight: bold;
     }
     .repo-link a:hover {
       background: #66ccff;
-      color: #1a1a1a;
+      color: #000;
+    }
+    footer {
+      font-size: 0.9rem;
     }
   </style>
 </head>
 <body>
   <header>
-    <img src="docs/Gitz.png" alt="Gitz Logo">
+    <img src="docs/Gitz.png" alt="Gitz Logo" />
     <h1>Gitz</h1>
     <p>The Vibable Programming Language</p>
   </header>
@@ -96,14 +122,28 @@
     <section id="story">
       <h2>Our Story</h2>
       <p>
-        Gitz was born from the desire to make coding as natural as conversation. We believe that programming should have personality, and that code can be as expressive and fun as the people who write it.
+        Gitz was born from the belief that coding should be as expressive as everyday conversation. We set out to create a language that embraces broken English while enforcing strong, static type checking—making it both fun and reliable.
       </p>
       <p>
-        Built with a unique blend of broken English and rigorous static checks, Gitz lets you write code that reads like dialogue while ensuring that variables are declared, types match, and errors are caught before runtime.
+        With Gitz, you can write code that reads naturally yet compiles with precision. Our robust static analyzer ensures that variables are declared before use, types match correctly, and function calls adhere to their signatures. This careful balance lets developers focus on creativity without sacrificing correctness.
       </p>
       <p>
-        Whether you're a seasoned developer or just starting out, Gitz offers an approachable, vibable coding experience where creativity meets robust engineering.
+        Perfect for those who think programming should have personality, Gitz is designed to be vibable, expressive, and accessible. Whether you're a seasoned developer or just starting out, Gitz brings a fresh, intuitive approach to building software.
       </p>
+    </section>
+    <section id="features">
+      <h2>Features</h2>
+      <ul>
+        <li><strong>Say Stuff:</strong> No need for <code>print()</code>. Just use <code>say()</code>.</li>
+        <li><strong>Make Things:</strong> Declare variables with <code>Make</code> and define their type.</li>
+        <li><strong>Keep Doing Things:</strong> Use <code>Keep</code> for loops.</li>
+        <li><strong>Show How To Do Stuff:</strong> Define functions with <code>Show()</code> and return values with <code>give()</code>.</li>
+        <li><strong>When This Happens:</strong> Handle conditions with <code>When</code> and <code>orElse</code>.</li>
+        <li><strong>Compare Things:</strong> Use <code>bigger</code>, <code>smaller</code>, <code>equal</code>, <code>notSame</code> for comparisons.</li>
+        <li><strong>Do Math:</strong> Use <code>plus</code>, <code>minus</code>, <code>times</code>, <code>over</code>, and <code>mod</code> for calculations.</li>
+        <li><strong>Keep Lists:</strong> Use <code>list</code> to store multiple items.</li>
+        <li><strong>Static Typing & Analysis:</strong> Enjoy compile-time checks for scope resolution, type consistency, function parameter matching, control flow enforcement, and list type consistency.</li>
+      </ul>
     </section>
     <section id="examples">
       <h2>Example Programs</h2>
@@ -143,38 +183,38 @@ say(fruits[0]);
     <section id="developers">
       <h2>Developers</h2>
       <div class="developer">
-        <img src="https://via.placeholder.com/80" alt="Kevin Thomas">
+        <img src="https://via.placeholder.com/80" alt="Kevin Thomas" />
         <div>
           <h3>Kevin Thomas</h3>
           <p>
-            Kevin is the visionary behind Gitz’s language design. He loves crafting tools that make coding creative and expressive.
+            Kevin is the visionary behind Gitz’s design. He is passionate about creating languages that blend creativity with robust compile-time checks.
           </p>
         </div>
       </div>
       <div class="developer">
-        <img src="https://via.placeholder.com/80" alt="Callista Napitupulu">
+        <img src="https://via.placeholder.com/80" alt="Callista Napitupulu" />
         <div>
           <h3>Callista Napitupulu</h3>
           <p>
-            Callista is passionate about user experience and language aesthetics. Her attention to detail ensures that Gitz is both intuitive and fun.
+            Callista focuses on user experience and aesthetic design. Her work ensures that Gitz remains intuitive and approachable.
           </p>
         </div>
       </div>
       <div class="developer">
-        <img src="https://via.placeholder.com/80" alt="Stanley Gunawan">
+        <img src="https://via.placeholder.com/80" alt="Stanley Gunawan" />
         <div>
           <h3>Stanley Gunawan</h3>
           <p>
-            Stanley works on the compiler and static analysis. He ensures that Gitz’s robust type system catches errors before your code runs.
+            Stanley handles the compiler and static analysis. His dedication guarantees that Gitz catches errors early and keeps code reliable.
           </p>
         </div>
       </div>
     </section>
     <section id="repo">
-      <h2>Repository</h2>
+      <h2>GitHub Repository</h2>
       <div class="repo-link">
         <p>
-          Check out our source code and contribute on GitHub:
+          Explore our source code and contribute to Gitz on GitHub:
         </p>
         <a href="https://github.com/kevgregory/gitz" target="_blank">Visit the Gitz Repo</a>
       </div>
