@@ -2,19 +2,186 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gitz - The Vibable Language</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Gitz - The Vibable Programming Language</title>
+  <style>
+    /* Global Styles */
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #1a1a1a;
+      color: #f0f0f0;
+      line-height: 1.6;
+    }
+    a {
+      color: #66ccff;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    header, footer {
+      text-align: center;
+      padding: 2rem 1rem;
+      background: linear-gradient(135deg, #000000, #0d47a1);
+      color: #fff;
+    }
+    header img {
+      max-width: 120px;
+      margin-bottom: 1rem;
+    }
+    main {
+      max-width: 1000px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+    section {
+      background: #262626;
+      margin: 1rem 0;
+      padding: 1.5rem;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+    }
+    h2 {
+      border-bottom: 2px solid #444;
+      padding-bottom: 0.5rem;
+      margin-top: 0;
+    }
+    pre {
+      background: #333;
+      color: #c5c8c6;
+      padding: 1rem;
+      overflow-x: auto;
+      border-radius: 5px;
+      margin: 1rem 0;
+    }
+    /* Developer Section */
+    .developer {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .developer img {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin-right: 1rem;
+      border: 2px solid #66ccff;
+    }
+    /* Repository Link */
+    .repo-link {
+      text-align: center;
+      margin: 2rem 0;
+    }
+    .repo-link a {
+      display: inline-block;
+      padding: 0.6rem 1.2rem;
+      border: 2px solid #66ccff;
+      border-radius: 4px;
+      transition: background 0.3s, color 0.3s;
+    }
+    .repo-link a:hover {
+      background: #66ccff;
+      color: #1a1a1a;
+    }
+  </style>
 </head>
 <body>
   <header>
-    <h1>Welcome to Gitz</h1>
+    <img src="docs/Gitz.png" alt="Gitz Logo">
+    <h1>Gitz</h1>
+    <p>The Vibable Programming Language</p>
   </header>
   <main>
-    <p>Gitz is a fun, expressive programming language that reads like natural language.</p>
+    <section id="story">
+      <h2>Our Story</h2>
+      <p>
+        Gitz was born from the desire to make coding as natural as conversation. We believe that programming should have personality, and that code can be as expressive and fun as the people who write it.
+      </p>
+      <p>
+        Built with a unique blend of broken English and rigorous static checks, Gitz lets you write code that reads like dialogue while ensuring that variables are declared, types match, and errors are caught before runtime.
+      </p>
+      <p>
+        Whether you're a seasoned developer or just starting out, Gitz offers an approachable, vibable coding experience where creativity meets robust engineering.
+      </p>
+    </section>
+    <section id="examples">
+      <h2>Example Programs</h2>
+      <h3>Variables and Printing</h3>
+      <pre>
+Make name: text = "Alice";
+say("Hello", name);
+      </pre>
+      <h3>Loops</h3>
+      <pre>
+Make x: num = 0;
+Keep x smaller 10 {
+    say(x);
+    x = x plus 1;
+}
+      </pre>
+      <h3>If-Else Statements</h3>
+      <pre>
+When x bigger 5 {
+    say("Big number!");
+} orElse {
+    say("Small number!");
+}
+      </pre>
+      <h3>Functions</h3>
+      <pre>
+Show greet(name: text) -> text {
+    give "Hello " plus name;
+}
+      </pre>
+      <h3>Lists</h3>
+      <pre>
+Make fruits: list<text> = ["apple", "banana", "cherry"];
+say(fruits[0]);
+      </pre>
+    </section>
+    <section id="developers">
+      <h2>Developers</h2>
+      <div class="developer">
+        <img src="https://via.placeholder.com/80" alt="Kevin Thomas">
+        <div>
+          <h3>Kevin Thomas</h3>
+          <p>
+            Kevin is the visionary behind Gitz’s language design. He loves crafting tools that make coding creative and expressive.
+          </p>
+        </div>
+      </div>
+      <div class="developer">
+        <img src="https://via.placeholder.com/80" alt="Callista Napitupulu">
+        <div>
+          <h3>Callista Napitupulu</h3>
+          <p>
+            Callista is passionate about user experience and language aesthetics. Her attention to detail ensures that Gitz is both intuitive and fun.
+          </p>
+        </div>
+      </div>
+      <div class="developer">
+        <img src="https://via.placeholder.com/80" alt="Stanley Gunawan">
+        <div>
+          <h3>Stanley Gunawan</h3>
+          <p>
+            Stanley works on the compiler and static analysis. He ensures that Gitz’s robust type system catches errors before your code runs.
+          </p>
+        </div>
+      </div>
+    </section>
+    <section id="repo">
+      <h2>Repository</h2>
+      <div class="repo-link">
+        <p>
+          Check out our source code and contribute on GitHub:
+        </p>
+        <a href="https://github.com/kevgregory/gitz" target="_blank">Visit the Gitz Repo</a>
+      </div>
+    </section>
   </main>
   <footer>
-    <p>&copy; 2025 Gitz. <a href="https://github.com/kevgregory/gitz">View Repository</a></p>
+    <p>&copy; 2025 Gitz. All rights reserved.</p>
   </footer>
 </body>
 </html>
