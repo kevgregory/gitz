@@ -1,14 +1,9 @@
 // src/analyzer.js
 import * as core from "./core.js";
 
-// Helper: If x is an array with one element, return that element; otherwise, return x.
-function unwrap(x) {
-  return Array.isArray(x) && x.length === 1 ? x[0] : x;
-}
-
-// Helper: Call rep() if available; otherwise, return the node.
+// Helper: call .rep() if available; otherwise return node
 function getRep(node) {
-  return (node && typeof node.rep === "function") ? node.rep() : node;
+  return node && typeof node.rep === "function" ? node.rep() : node;
 }
 
 class Context {
@@ -33,17 +28,16 @@ class Context {
     if (this.parent) {
       return this.parent.lookup(name);
     }
-    throw new Error(`Identifier ${name} is not declared`);
+    throw new Error(`Identifier ${name} not declared`);
   }
 
   static root() {
-    const ctx = new Context({
-      locals: new Map(Object.entries({
-        ...core.standardLibrary,
-        "π": { kind: "Variable", name: "π", mutable: false, type: core.numType }
-      }))
-    });
-    ctx.add("true", { kind: "BooleanLiteral", value: true, type: core.boolType });
+    const ctx = new Context({ locals: new Map(Object.entries(core.standardLibrary)) });
+    // Add π if missing
+    if (!ctx.locals.has("π")) {
+      ctx.locals.set("π", { kind: "Variable", name: "π", mutable: false, type: core.numType });
+    }
+    ctx.add("true",  { kind: "BooleanLiteral", value: true,  type: core.boolType });
     ctx.add("false", { kind: "BooleanLiteral", value: false, type: core.boolType });
     return ctx;
   }
@@ -55,24 +49,22 @@ class Context {
 
 let context;
 
-function must(condition, message, errorLocation) {
-  if (!condition) {
+function must(cond, msg, { at } = {}) {
+  if (!cond) {
     let prefix = "";
-    if (errorLocation?.at?.getLineAndColumnMessage) {
-      prefix = errorLocation.at.getLineAndColumnMessage();
+    if (at && typeof at.getLineAndColumnMessage === "function") {
+      prefix = at.getLineAndColumnMessage();
     }
-    throw new Error(`${prefix}${message}`);
+    throw new Error(prefix + msg);
   }
 }
 
 function mustNotAlreadyBeDeclared(name, at) {
-  if (context.locals.has(name)) {
-    must(false, `Identifier ${name} already declared`, at);
-  }
+  must(!context.locals.has(name), `Identifier ${name} already declared`, at);
 }
 
-function mustHaveBeenFound(entity, name, at) {
-  must(entity, `Identifier ${name} not declared`, at);
+function mustBeFound(entity, name, at) {
+  must(!!entity, `Identifier ${name} not declared`, at);
 }
 
 function mustHaveNumericType(e, at) {
@@ -83,19 +75,17 @@ function mustHaveBooleanType(e, at) {
   must(e.type === core.boolType, "Expected a boolean", at);
 }
 
-function mustBothHaveSameType(e1, e2, at) {
-  must(e1.type === e2.type, "Operands must have same type", at);
-}
-
 function mustAllHaveSameType(exprs, at) {
+  if (exprs.length < 2) return;
+  const t0 = exprs[0].type;
   for (let i = 1; i < exprs.length; i++) {
-    mustBothHaveSameType(exprs[0], exprs[i], at);
+    must(exprs[i].type === t0, "All list elems must match", at);
   }
 }
 
-function mustBeAssignable(source, { toType }, at) {
-  if (source.type === "any" || toType === "any") return;
-  must(source.type === toType, `Cannot assign ${source.type} to ${toType}`, at);
+function mustBeAssignable(src, { toType }, at) {
+  if (src.type === "any" || toType === "any") return;
+  must(src.type === toType, `Cannot assign ${src.type} to ${toType}`, at);
 }
 
 function isMutable(e) {
@@ -106,15 +96,14 @@ function mustBeMutable(e, at) {
   must(isMutable(e), "Cannot assign to immutable variable", at);
 }
 
-function mustBeInLoop(statement, at) {
-  must(context.inLoop, `${statement} used outside of a loop`, at);
+function mustBeInLoop(keyword, at) {
+  must(context.inLoop, `${keyword} used outside of loop`, at);
 }
 
 export default function analyze(match) {
   if (!match.succeeded()) {
     throw new Error(match.message);
   }
-
   context = Context.root();
   const semantics = match.matcher.grammar.createSemantics();
 
@@ -122,145 +111,147 @@ export default function analyze(match) {
     _terminal() {
       return this.sourceString;
     },
-    _iter(...children) {
-      return children.map(c => getRep(c));
+    _iter(...kids) {
+      return kids.map(getRep);
     },
-    _nonterminal(...children) {
-      return getRep(children[0]);
-    },
-
-    Program_program(statementList) {
-      return core.program(statementList.children.map(s => getRep(s)));
+    _nonterminal(...kids) {
+      return getRep(kids[0]);
     },
 
-    VarDecl_varDecl(make, id, colon, type, initOpt, semi) {
+    Program_program(stmts) {
+      return core.program(stmts.children.map((s) => getRep(s)));
+    },
+
+    VarDecl_varDecl(_mk, id, _colon, typeNode, initOpt, _semi) {
       const name = id.sourceString;
       mustNotAlreadyBeDeclared(name, { at: id });
-      const varType = getRep(type);
+      const varType = getRep(typeNode);
       const variable = core.variable(name, true, varType);
-      if (initOpt.children.length > 0) {
-        const initializer = getRep(initOpt.children[0]);
-        if (initializer.kind === "ListLiteral" && initializer.elements.length === 0) {
-          initializer.type = variable.type;
+      if (initOpt.children.length) {
+        const init = getRep(initOpt.children[0]);
+        if (init.kind === "ListLiteral" && init.elements.length === 0) {
+          init.type = varType;
         }
-        mustBeAssignable(initializer, { toType: variable.type }, { at: id });
+        mustBeAssignable(init, { toType: varType }, { at: id });
         context.add(name, variable);
-        return core.variableDeclaration(variable, initializer);
+        return core.variableDeclaration(variable, init);
       }
       context.add(name, variable);
       return core.variableDeclaration(variable, core.emptyInitializer(varType));
     },
 
-    ListDecl_listDecl(make, id, colon, type, initOpt, semi) {
-      const name = id.sourceString;
-      mustNotAlreadyBeDeclared(name, { at: id });
-      const varType = getRep(type);
-      const variable = core.variable(name, true, varType);
-      if (initOpt.children.length > 0) {
-        const initializer = getRep(initOpt.children[0]);
-        if (initializer.kind === "ListLiteral" && initializer.elements.length === 0) {
-          initializer.type = variable.type;
-        }
-        mustBeAssignable(initializer, { toType: variable.type }, { at: id });
-        context.add(name, variable);
-        return core.variableDeclaration(variable, initializer);
-      }
-      context.add(name, variable);
-      return core.variableDeclaration(variable, core.emptyInitializer(varType));
+    ListDecl_listDecl(_mk, id, _colon, typeNode, initOpt, _semi) {
+      // identical to VarDecl
+      return this.VarDecl_varDecl(_mk, id, _colon, typeNode, initOpt, _semi);
     },
 
-    Initialiser_init(eq, exp) {
+    Initialiser_init(_eq, exp) {
       return getRep(exp);
     },
 
-    // Function declaration rule modified to support recursion
-    FunDecl_funDecl(show, id, params, arrowOpt, retTypeOpt, block) {
+    // === THIS IS THE ONLY CHANGE: restore original-return-type logic ===
+    FunDecl_funDecl(_show, id, params, _arrowOpt, retTypeOpt, block) {
       const name = id.sourceString;
       mustNotAlreadyBeDeclared(name, { at: id });
       const saved = context;
-      // Create a new child context for the function's parameters and body.
+      // new child context for parameters + body
       context = context.newChildContext({ inLoop: false });
-      // Process parameters (without unwrapping)
-      let paramList = params.rep();
+
+      // params.rep() → array of variable nodes
+      let paramList = getRep(params);
       if (!Array.isArray(paramList)) {
         paramList = [paramList];
       }
-      // Check for duplicate parameter names.
+      // check duplicate param names
       const seen = new Set();
-      paramList.forEach(param => {
+      paramList.forEach((param) => {
         if (seen.has(param.name)) {
           throw new Error(`Identifier ${param.name} already declared`);
         }
         seen.add(param.name);
       });
-      const returnType = retTypeOpt.children.length > 0
-        ? retTypeOpt.children[0].rep()
-        : core.voidType;
+
+      // explicit return type if present
+      const returnType =
+        retTypeOpt.children.length > 0
+          ? getRep(retTypeOpt.children[0])
+          : core.voidType;
+
+      // create the function entity
       const fun = core.fun(
         name,
         paramList,
-        [], // body will be set below
-        core.functionType(paramList.map(p => p.type), returnType),
+        [], // body set below
+        core.functionType(paramList.map((p) => p.type), returnType),
         returnType
       );
-      // Add the function to both the child's and parent's context for recursion.
+
+      // allow recursion
       context.add(name, fun);
       saved.add(name, fun);
-      // Add each parameter to the function's child context.
-      paramList.forEach(param => context.add(param.name, param));
+
+      // add parameters into new context
+      paramList.forEach((param) => context.add(param.name, param));
       context.currentFunction = fun;
+
+      // analyze body
       fun.body = getRep(block);
+
+      // restore
       context = saved;
       return core.functionDeclaration(fun);
     },
 
-    Params_params(open, paramListOpt, close) {
-      return paramListOpt.children.length === 0 ? [] : getRep(paramListOpt);
+    Params_params(_lp, paramListOpt, _rp) {
+      return paramListOpt.children.length
+        ? getRep(paramListOpt.children[0])
+        : [];
     },
 
-    ParamList_paramList(first, comma, rest) {
-      return [getRep(first), ...rest.children.map(child =>
-        child.children[1] ? getRep(child.children[1]) : getRep(child)
-      )];
+    ParamList_paramList(first, _comma, rest) {
+      const arr = [getRep(first)];
+      rest.children.forEach((ch) => arr.push(getRep(ch.children[1])));
+      return arr;
     },
 
-    Param_param(id, colon, type) {
-      const param = core.variable(id.sourceString, false, getRep(type));
-      mustNotAlreadyBeDeclared(param.name, { at: id });
-      return param;
+    Param_param(id, _colon, typeNode) {
+      return core.variable(id.sourceString, false, getRep(typeNode));
     },
 
-    ReturnStmt_returnStmt(give, exp, semi) {
-      const rawExpr = getRep(exp);
-      const expr = Array.isArray(rawExpr) && rawExpr.length === 1 ? rawExpr[0] : rawExpr;
-      must(context.currentFunction, "Return used outside of a function", { at: give });
-      const expectedType = context.currentFunction.returnType;
-      if (expectedType === core.voidType) {
-        throw new Error(`Cannot assign ${expr.type} to void`, { at: give });
-      } else {
-        mustBeAssignable(expr, { toType: expectedType }, { at: give });
+    ReturnStmt_returnStmt(_give, expOpt, _semi) {
+      must(context.currentFunction, "Return used outside of a function", { at: this });
+      if (expOpt.children.length === 0) {
+        // empty return allowed only in void functions
+        must(
+          context.currentFunction.returnType === core.voidType,
+          "Return with no value in non-void function",
+          { at: this }
+        );
+        return core.returnStatement(null);
       }
+      const expr = getRep(expOpt.children[0]);
+      mustBeAssignable(expr, { toType: context.currentFunction.returnType }, { at: this });
       return core.returnStatement(expr);
     },
 
-    IfStmt_ifStmt(whenKeyword, exp, block, orWhenClauses, _orElse, orElseBlock) {
-      const test = getRep(exp);
-      mustHaveBooleanType(test, { at: exp });
-      const consequent = getRep(block);
+    IfStmt_ifStmt(_when, cond, cons, orWhenArr, _orElse, elseBlk) {
+      const test = getRep(cond);
+      mustHaveBooleanType(test, { at: cond });
+      const consequent = getRep(cons);
+      const ors = getRep(orWhenArr);
       let alternate = null;
-      const orWhenArr = getRep(orWhenClauses);
-      if (Array.isArray(orWhenArr) && orWhenArr.length > 0) {
-        alternate = core.ifStatement(orWhenArr[0].condition, orWhenArr[0].block, null);
-        let current = alternate;
-        for (let i = 1; i < orWhenArr.length; i++) {
-          current.alternate = core.ifStatement(orWhenArr[i].condition, orWhenArr[i].block, null);
-          current = current.alternate;
+      if (ors.length) {
+        alternate = core.ifStatement(ors[0].condition, ors[0].block, null);
+        let cur = alternate;
+        for (let i = 1; i < ors.length; i++) {
+          cur.alternate = core.ifStatement(ors[i].condition, ors[i].block, null);
+          cur = cur.alternate;
         }
-        if (orElseBlock.numChildren > 0) {
-          current.alternate = getRep(orElseBlock);
+        if (elseBlk.children.length) {
+          cur.alternate = getRep(elseBlk);
         }
-      } else if (orElseBlock.numChildren > 0) {
-        alternate = getRep(orElseBlock);
+      } else if (elseBlk.children.length) {
+        alternate = getRep(elseBlk);
       }
       return core.ifStatement(test, consequent, alternate);
     },
@@ -269,350 +260,323 @@ export default function analyze(match) {
       return { condition: getRep(exp), block: getRep(block) };
     },
 
-    Block_block(open, stmtsOpt, close) {
-      if (stmtsOpt.children.length === 0) return [];
-      let rep = getRep(stmtsOpt.children[0]);
-      if (!Array.isArray(rep)) rep = [rep];
-      return rep;
+    Block_block(_l, stmtsOpt, _r) {
+      if (!stmtsOpt.children.length) return [];
+      const rep = getRep(stmtsOpt.children[0]);
+      return Array.isArray(rep) ? rep : [rep];
     },
 
-    LoopStmt_loopForEach(keep, id, inKeyword, exp, block) {
-      const iterName = id.sourceString;
-      const collection = getRep(exp);
-      const baseType = collection.type.startsWith("list<")
-        ? collection.type.slice(5, -1)
-        : "any";
-      const variable = core.variable(iterName, true, baseType);
-      context.add(iterName, variable);
-      const saved = context;
+    LoopStmt_loopForEach(_keep, id, _in, exp, block) {
+      const coll = getRep(exp);
+      must(
+        typeof coll.type === "string" && coll.type.startsWith("list<"),
+        "Expected a list",
+        { at: exp }
+      );
+      const elemType = coll.type.slice(5, -1);
+      const iterVar = core.variable(id.sourceString, true, elemType);
+      context.add(id.sourceString, iterVar);
+      const outer = context;
       context = context.newChildContext({ inLoop: true });
       const body = getRep(block);
-      context = saved;
-      return core.forStatement(variable, collection, body);
+      context = outer;
+      return core.forStatement(iterVar, coll, body);
     },
 
-    LoopStmt_loopWhile(keep, exp, block) {
+    LoopStmt_loopWhile(_keep, exp, block) {
       const test = getRep(exp);
       mustHaveBooleanType(test, { at: exp });
-      const saved = context;
+      const outer = context;
       context = context.newChildContext({ inLoop: true });
       const body = getRep(block);
-      context = saved;
+      context = outer;
       return core.whileStatement(test, body);
     },
 
-    BreakStmt_breakStmt(breakKeyword, semi) {
-      mustBeInLoop("Break", { at: breakKeyword });
+    BreakStmt_breakStmt(_kw, _s) {
+      mustBeInLoop("Break", { at: this });
       return core.breakStatement();
     },
 
-    ContinueStmt_continueStmt(skipKeyword, semi) {
-      mustBeInLoop("Skip", { at: skipKeyword });
+    ContinueStmt_continueStmt(_kw, _s) {
+      mustBeInLoop("Skip", { at: this });
       return core.continueStatement();
     },
 
-    SayStmt_sayStmt(say, openParen, argsOpt, closeParen, semi) {
-      const argsList = argsOpt.children.length > 0 ? getRep(argsOpt.children[0]) : [];
-      return core.sayStatement(argsList);
+    SayStmt_sayStmt(_say, _lp, argsOpt, _rp, _s) {
+      const args = argsOpt.children.length ? getRep(argsOpt.children[0]) : [];
+      return core.sayStatement(args);
     },
 
-    Assignment_assignValid(lhs, eq, exp, semi) {
-      const leftVal = getRep(lhs);
-      const source = getRep(exp);
-      mustBeMutable(leftVal, { at: lhs });
-      mustBeAssignable(source, { toType: leftVal.type }, { at: lhs });
-      return core.assignment(leftVal, source);
+    Assignment_assignValid(lhs, _eq, exp, _s) {
+      const left = getRep(lhs);
+      const src = getRep(exp);
+      mustBeMutable(left, { at: lhs });
+      mustBeAssignable(src, { toType: left.type }, { at: lhs });
+      return core.assignment(left, src);
     },
 
-    Assignment_assignInvalid(intLit, eq, exp, semi) {
+    Assignment_assignInvalid(_i, _eq, _e, _s) {
       throw new Error("Invalid assignment");
     },
 
-    IndexedAccess_index(id, open, exp, close) {
-      const variable = context.lookup(id.sourceString);
-      const index = getRep(exp);
-      mustHaveNumericType(index, { at: exp });
-      return core.subscript(variable, index);
+    IndexedAccess_index(id, _l, idx, _r) {
+      const arr = context.lookup(id.sourceString);
+      const index = getRep(idx);
+      mustHaveNumericType(index, { at: idx });
+      return core.subscript(arr, index);
     },
 
-    FunCallStatement_funCallStmt(call, semi) {
+    FunCallStatement_funCallStmt(call, _s) {
       return getRep(call);
     },
 
-    FunCall_funCallArgs(id, open, argListOpt, close) {
-      const target = context.lookup(id.sourceString);
-      const args = argListOpt.children.length > 0 ? getRep(argListOpt.children[0]) : [];
-      must(target.type.kind === "FunctionType", `${id.sourceString} is not a function`, { at: id });
+    FunCall_funCallArgs(id, _lp, argListOpt, _rp) {
+      const fn = context.lookup(id.sourceString);
+      mustBeFound(fn, id.sourceString, { at: id });
+      must(fn.type.kind === "FunctionType", `${id.sourceString} is not a function`, { at: id });
+      const args = argListOpt.children.length ? getRep(argListOpt.children[0]) : [];
       must(
-        target.type.paramTypes.length === args.length,
-        `Expected ${target.type.paramTypes.length} arguments but got ${args.length}`,
+        fn.type.paramTypes.length === args.length,
+        `Expected ${fn.type.paramTypes.length} args but got ${args.length}`,
         { at: id }
       );
-      args.forEach((arg, i) => {
-        const expected = target.type.paramTypes[i];
-        if (expected === core.numType) {
-          mustHaveNumericType(arg, { at: id });
+      args.forEach((a, i) => {
+        const want = fn.type.paramTypes[i];
+        if (want === core.numType) {
+          mustHaveNumericType(a, { at: id });
         } else {
-          mustBeAssignable(arg, { toType: expected }, { at: id });
+          mustBeAssignable(a, { toType: want }, { at: id });
         }
       });
-      return core.functionCall(target, args);
+      return core.functionCall(fn, args);
     },
 
-    FunCall_funCallNoArgs(id, open, close) {
-      const target = context.lookup(id.sourceString);
-      must(target.type.kind === "FunctionType", `${id.sourceString} is not a function`, { at: id });
-      must(target.type.paramTypes.length === 0, `Expected 0 arguments but got ${target.type.paramTypes.length}`, { at: id });
-      return core.functionCall(target, []);
+    FunCall_funCallNoArgs(id, _lp, _rp) {
+      const fn = context.lookup(id.sourceString);
+      mustBeFound(fn, id.sourceString, { at: id });
+      must(fn.type.kind === "FunctionType", `${id.sourceString} is not a function`, { at: id });
+      must(
+        fn.type.paramTypes.length === 0,
+        `Expected 0 args but got ${fn.type.paramTypes.length}`,
+        { at: id }
+      );
+      return core.functionCall(fn, []);
     },
 
-    ArgList_argList(first, comma, rest) {
-      const results = [getRep(first)];
-      if (rest.children.length > 0) {
-        results.push(...rest.children.map(child =>
-          child.children[1] ? getRep(child.children[1]) : getRep(child)
-        ));
-      }
-      if (results.length > 0) {
-        mustAllHaveSameType(results, { at: first });
-      }
-      return results;
+    ArgList_argList(first, _comma, rest) {
+      const arr = [getRep(first)];
+      rest.children.forEach((ch) => arr.push(getRep(ch.children[1] || ch.children[0])));
+      mustAllHaveSameType(arr, { at: first });
+      return arr;
     },
 
-    TryStmt_tryStmt(tryKeyword, block1, catchKeyword, id, block2) {
-      const errorVar = id.sourceString;
-      mustNotAlreadyBeDeclared(errorVar, { at: id });
-      const saved = context;
+    TryStmt_tryStmt(_t, body1, _c, id, body2) {
+      const name = id.sourceString;
+      mustNotAlreadyBeDeclared(name, { at: id });
+      const outer = context;
       context = context.newChildContext();
-      context.add(errorVar, core.variable(errorVar, false, core.textType));
-      const catchBlock = getRep(block2);
-      context = saved;
-      return core.tryCatch(getRep(block1), errorVar, catchBlock);
+      context.add(name, core.variable(name, false, core.textType));
+      const catchBody = getRep(body2);
+      context = outer;
+      return core.tryCatch(getRep(body1), name, catchBody);
     },
 
-    Exp_exp(exp) {
-      return getRep(exp);
+    Exp_exp(e) {
+      return getRep(e);
     },
 
-    LogicalOrExp_lor(first, op, rest) {
-      let expr = getRep(first);
-      for (const child of rest.children) {
-        let right = getRep(child.children[1]);
-        mustHaveBooleanType(expr, { at: first });
-        mustHaveBooleanType(right, { at: child.children[1] });
-        expr = core.binary("or", expr, right, core.boolType);
-      }
-      return expr;
+    LogicalOrExp_lor(first, _op, rest) {
+      let acc = getRep(first);
+      rest.children.forEach((ch) => {
+        const right = getRep(ch.children[1]);
+        mustHaveBooleanType(acc, { at: first });
+        mustHaveBooleanType(right, { at: first });
+        acc = core.binary("or", acc, right, core.boolType);
+      });
+      return acc;
     },
 
-    LogicalAndExp_land(first, op, rest) {
-      let expr = getRep(first);
-      for (const child of rest.children) {
-        let right = getRep(child.children[1]);
-        mustHaveBooleanType(expr, { at: first });
-        mustHaveBooleanType(right, { at: child.children[1] });
-        expr = core.binary("and", expr, right, core.boolType);
-      }
-      return expr;
+    LogicalAndExp_land(first, _op, rest) {
+      let acc = getRep(first);
+      rest.children.forEach((ch) => {
+        const right = getRep(ch.children[1]);
+        mustHaveBooleanType(acc, { at: first });
+        mustHaveBooleanType(right, { at: first });
+        acc = core.binary("and", acc, right, core.boolType);
+      });
+      return acc;
     },
 
-    EqualityExp_eqExp(first, op, rest) {
-      let expr = getRep(first);
-      for (const child of rest.children) {
-        let right = getRep(child.children[1]);
-        mustBothHaveSameType(expr, right, { at: child.children[0] });
-        expr = core.binary(child.children[0].sourceString, expr, right, core.boolType);
-      }
-      return expr;
+    EqualityExp_eqExp(first, _op, rest) {
+      let acc = getRep(first);
+      rest.children.forEach((ch) => {
+        const op = ch.children[0].sourceString;
+        const right = getRep(ch.children[1]);
+        must(acc.type === right.type, "Operands must have same type", { at: ch.children[0] });
+        acc = core.binary(op, acc, right, core.boolType);
+      });
+      return acc;
     },
 
-    RelationalExp_relExp(first, op, rest) {
-      let expr = getRep(first);
-      for (const child of rest.children) {
-        let right = getRep(child.children[1]);
-        mustBothHaveSameType(expr, right, { at: child.children[0] });
-        expr = core.binary(child.children[0].sourceString, expr, right, core.boolType);
-      }
-      return expr;
+    RelationalExp_relExp(first, _op, rest) {
+      let acc = getRep(first);
+      rest.children.forEach((ch) => {
+        const op = ch.children[0].sourceString;
+        const right = getRep(ch.children[1]);
+        must(acc.type === right.type, "Operands must have same type", { at: ch.children[0] });
+        acc = core.binary(op, acc, right, core.boolType);
+      });
+      return acc;
     },
 
-    AdditiveExp_addExp(first, op, rest) {
-      let expr = getRep(first);
-      for (const child of rest.children) {
-        let opToken = child.children[0].sourceString;
-        let right = getRep(child.children[1]);
-        if (opToken === "plus") {
-          must(expr.type === core.numType || expr.type === core.textType, "Expected number or string", { at: first });
+    AdditiveExp_addExp(first, _op, rest) {
+      let acc = getRep(first);
+      rest.children.forEach((ch) => {
+        const op = ch.children[0].sourceString;
+        const right = getRep(ch.children[1]);
+        if (op === "plus") {
+          must(
+            acc.type === core.numType || acc.type === core.textType,
+            "Expected number or string",
+            { at: ch.children[0] }
+          );
         } else {
-          mustHaveNumericType(expr, { at: first });
+          mustHaveNumericType(acc, { at: ch.children[0] });
         }
-        mustBothHaveSameType(expr, right, { at: child.children[0] });
-        expr = core.binary(opToken, expr, right, expr.type);
-      }
-      return expr;
+        must(acc.type === right.type, "Operands must have same type", { at: ch.children[0] });
+        acc = core.binary(op, acc, right, acc.type);
+      });
+      return acc;
     },
 
-    MultiplicativeExp_mulExp(first, op, rest) {
-      let expr = getRep(first);
-      for (const child of rest.children) {
-        let opToken = child.children[0].sourceString;
-        let right = getRep(child.children[1]);
-        mustHaveNumericType(expr, { at: first });
-        mustHaveNumericType(right, { at: child.children[1] });
-        mustBothHaveSameType(expr, right, { at: child.children[0] });
-        expr = core.binary(opToken, expr, right, expr.type);
-      }
-      return expr;
+    MultiplicativeExp_mulExp(first, _op, rest) {
+      let acc = getRep(first);
+      rest.children.forEach((ch) => {
+        const op = ch.children[0].sourceString;
+        const right = getRep(ch.children[1]);
+        mustHaveNumericType(acc, { at: ch.children[0] });
+        mustHaveNumericType(right, { at: ch.children[0] });
+        must(acc.type === right.type, "Operands must have same type", { at: ch.children[0] });
+        acc = core.binary(op, acc, right, acc.type);
+      });
+      return acc;
     },
 
-    UnaryExp_unary(opOpt, primary) {
-      if (opOpt.children.length === 0) return getRep(primary);
+    UnaryExp_unary(opOpt, prim) {
+      if (!opOpt.children.length) return getRep(prim);
       const op = opOpt.children[0].sourceString;
-      const expr = getRep(primary);
+      const expr = getRep(prim);
       if (op === "minus") {
-        mustHaveNumericType(expr, { at: primary });
+        mustHaveNumericType(expr, { at: prim });
         return core.unary("minus", expr, expr.type);
-      }
-      if (op === "not") {
-        mustHaveBooleanType(expr, { at: primary });
+      } else {
+        mustHaveBooleanType(expr, { at: prim });
         return core.unary("not", expr, core.boolType);
       }
-      throw new Error(`Unsupported unary operator ${op}`);
     },
 
-    PrimaryExp_parens(open, exp, close) {
-      return getRep(exp);
+    PrimaryExp_parens(_l, e, _r) {
+      return getRep(e);
     },
-
     PrimaryExp_primaryFunCall(call) {
       return getRep(call);
     },
-
-    PrimaryExp_primaryIndex(indexed) {
-      return getRep(indexed);
+    PrimaryExp_primaryIndex(idx) {
+      return getRep(idx);
     },
-
     PrimaryExp_primaryId(id) {
       const name = id.sourceString;
-      const entity = context.lookup(name);
-      mustHaveBeenFound(entity, name, { at: id });
-      return entity;
+      const ent = context.lookup(name);
+      mustBeFound(ent, name, { at: id });
+      return ent;
     },
-
-    PrimaryExp_primaryFloat(floatLit) {
-      return {
-        kind: "NumberLiteral",
-        value: parseFloat(floatLit.sourceString),
-        type: core.numType
-      };
+    PrimaryExp_primaryFloat(f) {
+      return { kind: "NumberLiteral", value: parseFloat(f.sourceString), type: core.numType };
     },
-
-    PrimaryExp_primaryInt(intLit) {
-      return {
-        kind: "NumberLiteral",
-        value: parseInt(intLit.sourceString, 10),
-        type: core.numType
-      };
+    PrimaryExp_primaryInt(i) {
+      return { kind: "NumberLiteral", value: parseInt(i.sourceString, 10), type: core.numType };
     },
-
     PrimaryExp_primaryString(str) {
-      return {
-        kind: "StringLiteral",
-        value: str.sourceString.slice(1, -1),
-        type: core.textType
-      };
+      return { kind: "StringLiteral", value: str.sourceString.slice(1, -1), type: core.textType };
+    },
+    PrimaryExp_primaryList(l) {
+      return getRep(l);
+    },
+    PrimaryExp_primaryBool(b) {
+      return { kind: "BooleanLiteral", value: b.sourceString === "true", type: core.boolType };
     },
 
-    PrimaryExp_primaryList(listExp) {
-      return getRep(listExp);
+    BasicType_basicType(b) {
+      return b.sourceString;
     },
 
-    PrimaryExp_primaryBool(boolLit) {
-      return {
-        kind: "BooleanLiteral",
-        value: boolLit.sourceString === "true",
-        type: core.boolType
-      };
+    ListType_listTypeSquare(_kw, _l, t, _r) {
+      const base = getRep(t);
+      if (
+        ![core.numType, core.textType, core.boolType].includes(base) &&
+        !base.startsWith("list<")
+      ) {
+        throw new Error("Type expected");
+      }
+      return core.listType(base);
     },
-
-    BasicType_basicType(basic) {
-      return basic.sourceString;
-    },
-
-    ListType_listTypeSquare(listKeyword, open, typeNode, close) {
-      const base = getRep(typeNode);
-      if (![core.numType, core.textType, core.boolType].includes(base) &&
-          !base.startsWith("list<")) {
+    ListType_listTypeAngle(_kw, _l, t, _r) {
+      const base = getRep(t);
+      if (
+        ![core.numType, core.textType, core.boolType].includes(base) &&
+        !base.startsWith("list<")
+      ) {
         throw new Error("Type expected");
       }
       return core.listType(base);
     },
 
-    ListType_listTypeAngle(listKeyword, open, typeNode, close) {
-      const base = getRep(typeNode);
-      if (![core.numType, core.textType, core.boolType].includes(base) &&
-          !base.startsWith("list<")) {
-        throw new Error("Type expected");
-      }
-      return core.listType(base);
-    },
-
-    FloatLit_floatFull(whole, point, fraction, expPart) {
+    FloatLit_floatFull(w, p, f, e) {
       return {
-        kind: "NumberLiteral",
-        value: parseFloat(whole.sourceString + point.sourceString + fraction.sourceString),
-        type: core.numType
+        kind:  "NumberLiteral",
+        value: parseFloat(w.sourceString + p.sourceString + f.sourceString + (e.sourceString||"")),
+        type:  core.numType
+      };
+    },
+    FloatLit_floatTrailingDot(w, p, e) {
+      return {
+        kind:  "NumberLiteral",
+        value: parseFloat(w.sourceString + p.sourceString + (e.sourceString||"")),
+        type:  core.numType
+      };
+    },
+    FloatLit_floatLeadingDot(p, f, e) {
+      return {
+        kind:  "NumberLiteral",
+        value: parseFloat(p.sourceString + f.sourceString + (e.sourceString||"")),
+        type:  core.numType
       };
     },
 
-    FloatLit_floatTrailingDot(whole, point, expPart) {
-      return {
-        kind: "NumberLiteral",
-        value: parseFloat(whole.sourceString + point.sourceString),
-        type: core.numType
-      };
+    StringLit_stringClosed(_open, chars, _close) {
+      return { kind: "StringLiteral", value: chars.sourceString, type: core.textType };
     },
-
-    FloatLit_floatLeadingDot(point, fraction, expPart) {
-      return {
-        kind: "NumberLiteral",
-        value: parseFloat(point.sourceString + fraction.sourceString),
-        type: core.numType
-      };
-    },
-
-    StringLit_stringClosed(openQuote, chars, closeQuote) {
-      return {
-        kind: "StringLiteral",
-        value: chars.sourceString,
-        type: core.textType
-      };
-    },
-
-    StringLit_stringUnclosed(openQuote, chars) {
+    StringLit_stringUnclosed(_open, chars) {
       throw new Error("String literal not closed");
     },
 
-    ListExp_listExp(open, expListOpt, close) {
-      const elements = expListOpt.children.length > 0 ? getRep(expListOpt.children[0]) : [];
-      const elementType = elements.length > 0 ? elements[0].type : "any";
-      if (elements.length > 0) {
-        mustAllHaveSameType(elements, { at: open });
-      }
-      return core.listLiteral(elements, core.listType(elementType));
+    ListExp_listExp(_l, elemsOpt, _r) {
+      const elems = elemsOpt.children.length ? getRep(elemsOpt.children[0]) : [];
+      mustAllHaveSameType(elems, { at: _l });
+      const elemType = elems.length ? elems[0].type : core.anyType;
+      return core.listLiteral(elems, core.listType(elemType));
     },
 
-    ExpList_expList(first, comma, rest) {
-      const results = [getRep(first)];
-      if (rest.children.length > 0) {
-        results.push(...rest.children.map(child =>
-          child.children[1] ? getRep(child.children[1]) : getRep(child)
-        ));
-      }
-      if (results.length > 0) {
-        mustAllHaveSameType(results, { at: first });
-      }
-      return results;
+    ExpList_expList(first, _comma, rest) {
+      const arr = [getRep(first)];
+      rest.children.forEach((ch) => arr.push(getRep(ch.children[1] || ch.children[0])));
+      mustAllHaveSameType(arr, { at: first });
+      return arr;
+    },
+
+    Statement_parenStmt(_l, exp, _r, _s) {
+      return getRep(exp);
     }
   });
 

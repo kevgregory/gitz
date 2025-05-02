@@ -1,150 +1,132 @@
 Gitz {
-  // Program structure
-  Program = Statement*                                      --program
+  // Top-level
+  Program         = Statement*                                      --program
 
   // Statements
   Statement =
-      VarDecl                                                 --stmtVarDecl
-    | ListDecl                                                --stmtListDecl
-    | FunDecl                                                 --stmtFunDecl
-    | Assignment                                              --stmtAssignment
-    | FunCallStatement                                        --stmtFunCall
-    | ReturnStmt                                              --stmtReturn
-    | IfStmt                                                  --stmtIf
-    | LoopStmt                                                --stmtLoop
-    | TryStmt                                                 --stmtTry
-    | BreakStmt                                               --stmtBreak
-    | ContinueStmt                                            --stmtContinue
-    | SayStmt                                                 --stmtSay
-    | "(" Exp ")" ";"                                         --parenStmt
+      VarDecl                                                   --stmtVarDecl
+    | ListDecl                                                  --stmtListDecl
+    | FunDecl                                                   --stmtFunDecl
+    | Assignment                                                --stmtAssignment
+    | FunCallStatement                                          --stmtFunCall
+    | ReturnStmt                                                --stmtReturn
+    | IfStmt                                                    --stmtIf
+    | LoopStmt                                                  --stmtLoop
+    | TryStmt                                                   --stmtTry
+    | BreakStmt                                                 --stmtBreak
+    | ContinueStmt                                              --stmtContinue
+    | SayStmt                                                   --stmtSay
+    | "(" Exp ")" ";"                                           --parenStmt
 
-  // Control flow statements
-  FunCallStatement = FunCall ";"                              --funCallStmt
-  BreakStmt        = "Break" ";"                              --breakStmt
-  ContinueStmt     = "Skip" ";"                               --continueStmt
-  SayStmt          = "say" "(" ExpList? ")" ";"               --sayStmt
+  FunCallStatement = FunCall ";"                                --funCallStmt
+  BreakStmt        = "Break" ";"                                --breakStmt
+  ContinueStmt     = "Skip" ";"                                 --continueStmt
+  SayStmt          = "say" "(" ExpList? ")" ";"                 --sayStmt
 
   // Declarations
-  VarDecl  = "Make" id ":" Type Initialiser? ";"              --varDecl
-  ListDecl = "Make" id ":" ListType Initialiser? ";"          --listDecl
-
-  Initialiser = "=" Exp                                       --init
+  VarDecl    = "Make" id ":" Type Initialiser? ";"              --varDecl
+  ListDecl   = "Make" id ":" ListType Initialiser? ";"          --listDecl
+  Initialiser = "=" Exp                                         --init
 
   // Functions
-  FunDecl =
-      "Show" id Params ("->" Type)? Block                     --funDecl
+  FunDecl    = "Show" id Params ("->" Type)? Block              --funDecl
+  Params     = "(" ParamList? ")"                               --params
+  ParamList  = Param ("," Param)*                              --paramList
+  Param      = id ":" Type                                      --param
 
-  Params = "(" ParamList? ")"                                 --params
-  ParamList = Param ("," Param)*                              --paramList
-  Param  = id ":" Type                                        --param
+  // Return
+  ReturnStmt = "give" Exp? ";"                                  --returnStmt
 
-  ReturnStmt = "give" Exp? ";"                                --returnStmt
+  // Conditionals
+  IfStmt     = "When" Exp Block (OrWhenClause)* ("orElse" Block)? --ifStmt
+  OrWhenClause = "orWhen" Exp Block                             --orWhenClause
 
-  // Control structures
-  IfStmt =
-      "When" Exp Block (OrWhenClause)* ("orElse" Block)?      --ifStmt
+  // Loops
+  LoopStmt   = "Keep" id "in" Exp Block                          --loopForEach
+             | "Keep" Exp Block                                --loopWhile
 
-  OrWhenClause = "orWhen" Exp Block                           --orWhenClause
+  // Assignments & indexing
+  Assignment      = (id | IndexedAccess) "=" Exp ";"            --assignValid
+                  | IntLit "=" Exp ";"                         --assignInvalid
+  IndexedAccess   = id "[" Exp "]"                              --index
 
-  LoopStmt =
-      "Keep" id "in" Exp Block                                --loopForEach
-    | "Keep" Exp Block                                        --loopWhile
+  // Function calls (expressions vs statements)
+  FunCall     = id "(" ArgList ")"                              --funCallArgs
+              | id "(" ")"                                      --funCallNoArgs
+  ArgList     = Exp ("," Exp)*                                  --argList
+
+  // Exception handling
+  TryStmt     = "Try" Block "Catch" id Block                    --tryStmt
+
+  // Blocks
+  Block       = "{" (Statement | FunDecl)* "}"                  --block
 
   // Expressions
-  Assignment =
-      (id | IndexedAccess) "=" Exp ";"                        --assignValid
-    | IntLit "=" Exp ";"                                      --assignInvalid
+  Exp                 = ConditionalExp                          --exp
 
-  IndexedAccess = id "[" Exp "]"                              --index
+  ConditionalExp      = LogicalOrExp                            --conditional
 
-  FunCall =
-      id "(" ArgList ")"                                      --funCallArgs
-    | id "(" ")"                                              --funCallNoArgs
+  LogicalOrExp        = LogicalAndExp ("or" LogicalAndExp)*     --lor
+  LogicalAndExp       = EqualityExp ("and" EqualityExp)*        --land
+  EqualityExp         = RelationalExp (EqualityOp RelationalExp)* --eqExp
+  EqualityOp          = "==" | "!=" | "equal" | "notSame"       --eqOp
+  RelationalExp       = AdditiveExp (RelOp AdditiveExp)*        --relExp
+  RelOp               = "<" | ">" | "bigger" | "smaller" | "in" --relOp
+  AdditiveExp         = MultiplicativeExp (AddOp MultiplicativeExp)* --addExp
+  AddOp               = "plus" | "minus"                        --addOp
+  MultiplicativeExp   = UnaryExp (MulOp UnaryExp)*              --mulExp
+  MulOp               = "times" | "over" | "mod"                --mulOp
 
-  ArgList = Exp ("," Exp)*                                    --argList
-
-  TryStmt = "Try" Block "Catch" id Block                      --tryStmt
-
-  Block = "{" (Statement | FunDecl)* "}"                      --block
-
-  // Expression hierarchy
-  Exp = ConditionalExp                                        --exp
-
-  ConditionalExp = LogicalOrExp                               --conditional
-
-  LogicalOrExp = LogicalAndExp ("or" LogicalAndExp)*          --lor
-  LogicalAndExp = EqualityExp ("and" EqualityExp)*            --land
-  EqualityExp = RelationalExp (EqualityOp RelationalExp)*     --eqExp
-  EqualityOp = "==" | "!=" | "equal" | "notSame"              --eqOp
-  RelationalExp = AdditiveExp (RelOp AdditiveExp)*            --relExp
-  RelOp = "<" | ">" | "bigger" | "smaller" | "in"             --relOp
-  AdditiveExp = MultiplicativeExp (AddOp MultiplicativeExp)*  --addExp
-  AddOp = "plus" | "minus"                                    --addOp
-  MultiplicativeExp = UnaryExp (MulOp UnaryExp)*              --mulExp
-  MulOp = "times" | "over" | "mod"                            --mulOp
-
-  UnaryExp = ("minus" | "not")? PrimaryExp                    --unary
+  UnaryExp            = ("minus" | "not")? PrimaryExp            --unary
 
   PrimaryExp =
-      "(" Exp ")"                                             --parens
-    | FunCall                                                 --primaryFunCall
-    | IndexedAccess                                           --primaryIndex
-    | id                                                      --primaryId
-    | FloatLit                                                --primaryFloat
-    | IntLit                                                  --primaryInt
-    | StringLit                                               --primaryString
-    | ListExp                                                 --primaryList
-    | booleanLiteral                                          --primaryBool
+      "(" Exp ")"                                               --parens
+    | FunCall                                                  --primaryFunCall
+    | IndexedAccess                                            --primaryIndex
+    | id                                                       --primaryId
+    | FloatLit                                                 --primaryFloat
+    | IntLit                                                   --primaryInt
+    | StringLit                                                --primaryString
+    | ListExp                                                  --primaryList
+    | booleanLiteral                                           --primaryBool
 
-  booleanLiteral = "true" | "false"
+  booleanLiteral      = "true" | "false"
 
   // Types
-  Type = BasicType | ListType                                 --type
-  BasicType = "num" | "text" | "bool" | id                    --basicType
-  ListType =
-      "list" "[" Type "]"                                     --listTypeSquare
-    | "list" "<" Type ">"                                     --listTypeAngle
+  Type                = BasicType | ListType                    --type
+  BasicType           = "num" | "text" | "bool" | id            --basicType
+  ListType            = "list" "[" Type "]"                     --listTypeSquare
+                      | "list" "<" Type ">"                     --listTypeAngle
 
-  // Identifiers
-  id = ~reservedKeyword letter alnum*                         --identifier
+  // Identifiers & literals
+  id                  = ~reservedKeyword letter alnum*         --identifier
+  IntLit              = digit+                                --intLit
+  FloatLit            = digit+ "." digit+ ExpPart?            --floatFull
+                      | digit+ "." ExpPart?                   --floatTrailingDot
+                      | "." digit+ ExpPart?                   --floatLeadingDot
+  ExpPart             = "E" ("+" | "-")? digit+               --expPart
+  StringLit           = "\"" Char* "\""                        --stringClosed
+                      | "\"" Char*                            --stringUnclosed
 
-  // Literals
-  IntLit   = digit+                                           --intLit
-  FloatLit =
-      digit+ "." digit+ ExpPart?                             --floatFull
-    | digit+ "." ExpPart?                                    --floatTrailingDot
-    | "." digit+ ExpPart?                                    --floatLeadingDot
+  ListExp             = "[" ExpList? "]"                       --listExp
+  ExpList             = Exp ("," Exp)*                         --expList
 
-  ExpPart = "E" ("+" | "-")? digit+
+  Char                = NormalChar | EscapeSeq | UnicodeEscape --char
+  NormalChar          = ~Control ~"\\" ~"\"" any               --normalChar
+  EscapeSeq           = "\\" ("n" | "t" | "\"" | "\\")        --escapeSeq
+  UnicodeEscape       = "\\u{" hexDigit+ "}"                  --unicodeEscape
 
-  StringLit =
-      "\"" Char* "\""                                        --stringClosed
-    | "\"" Char*                                             --stringUnclosed
+  Control             = "\x00".."\x1f" | "\x80".."\x9f"         --control
 
-  ListExp = "[" ExpList? "]"                                 --listExp
-  ExpList = Exp ("," Exp)*                                   --expList
+  // Keywords
+  reservedKeyword     =
+      "Make" | "list" | "Show" | "When" | "Keep" | "orWhen"
+    | "orElse" | "give" | "say" | "Break" | "Skip" | "Try"
+    | "Catch"                                                     --reservedKeyword
 
-  // Character handling
-  Char = NormalChar | EscapeSeq | unicodeEscape               --char
-  NormalChar = ~Control ~"\\" ~"\"" any                       --normalChar
-  EscapeSeq = "\\" ("n" | "t" | "\"" | "\\")                  --escapeSeq
-  unicodeEscape = "\\u{" hexDigit+ "}"                        --unicodeEscape
-
-  Control = "\x00".."\x1f" | "\x80".."\x9f"                  --control
-
-  // Keywords - Split into reserved and operators
-  reservedKeyword = 
-    "Make" | "list" | "Show" | "When" | "Keep" | "orWhen" 
-    | "orElse" | "give" | "say" | "Break" | "Skip" | "Try" 
-    | "Catch"                                                --reserved
-
-  operatorKeyword =
-    "plus" | "minus" | "times" | "over" | "mod" 
-    | "equal" | "notSame" | "bigger" | "smaller" | "in" 
-    | "and" | "or" | "not"                                   --operators
-
-  // Whitespace and comments
+  // Comments & whitespace
   space += comment | multiLineComment
-  comment = "#" (~"\n" any)*                                 --comment
-  multiLineComment = "/*" (~"*/" any)* "*/"                  --multiComment
+
+  comment             = "#" (~"\n" any)*                       --lineComment
+  multiLineComment    = "/*" (~"*/" any)* "*/"                --blockComment
 }
