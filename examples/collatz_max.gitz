@@ -1,0 +1,19 @@
+Show collatzMax(n: num) -> num {
+    Make maxLen: num = 0;
+    Keep i in range(1, n plus 1) {
+        Make x: num = i;
+        Make len: num = 0;
+        Keep x bigger 1 {
+            When x mod 2 equal 0 {
+                x = x over 2;
+            } orElse {
+                x = x times 3 plus 1;
+            }
+            len = len plus 1;
+        }
+        When len bigger maxLen {
+            maxLen = len;
+        }
+    }
+    give maxLen;
+}

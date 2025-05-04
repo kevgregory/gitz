@@ -1,0 +1,3 @@
+Show main() -> void {
+    say("Hello, world!");
+}
