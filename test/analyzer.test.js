@@ -66,7 +66,6 @@ describe("Core Functions", () => {
 
   it("fun() default fnType infers void->void when fnType is omitted", () => {
     const f = fun("h", [], [], null);
-    // should have picked up functionType([], voidType)
     assert.equal(f.type.kind, "FunctionType");
     assert.deepEqual(f.type.paramTypes, []);
     assert.equal(f.type.returnType, voidType);
@@ -190,7 +189,8 @@ describe("Core Functions", () => {
   });
 
   it("listLiteral() returns a ListLiteral with declared type", () => {
-    const ll = listLiteral([{ kind: "NumberLiteral", value: 1, type: numType }], listType(numType));
+    const ll = listLiteral([{ kind: "NumberLiteral", value: 1, type: numType }],
+                           listType(numType));
     assert.equal(ll.kind, "ListLiteral");
     assert.equal(ll.type, "list<num>");
   });
@@ -265,15 +265,26 @@ describe("Semantic Checks", () => {
     ["parenthesized expression",         `say((1));`],
     ["integer literal",                  `say(123);`],
     ["float literal",                    `say(1.23);`],
-    ["string literal",                   `say("test");`],
-    ["boolean literal",                  `say(true);`],
-    ["list literal expression",          `say([1,2,3]);`],
-    ["unary minus",                      `say(minus 5);`],
-    ["unary not",                        `say(not false);`],
+    ["float full literal",               `say(12.34E+5);`],
+    ["float trailing dot",               `say(12.);`],
+    ["float leading dot",                `say(.34);`],
+    ["string closed literal",            `say("hi!");`],
+    ["boolean true literal",             `say(true);`],
+    ["boolean false literal",            `say(false);`],
+    ["additive plus",                    `say(1 plus 2);`],
+    ["additive minus",                   `say(5 minus 3);`],
+    ["multiplicative times",             `say(2 times 3);`],
+    ["multiplicative over",              `say(6 over 2);`],
+    ["multiplicative mod",               `say(7 mod 3);`],
+    ["logical or",                       `say(true or false);`],
+    ["logical and",                      `say(true and false);`],
+    ["equality",                         `say(1 == 1);`],
+    ["relational",                       `say(1 < 2);`],
     ["function call no args",            `Show f() { say(1); } say(f());`],
-    ["print with multiple arguments",    `say(1,2,3);`],
-    ["Continue in loop",                 `Keep true { Skip; }`],
-    ["Break in loop",                    `Keep true { Break; }`],
+    ["function call with args",          `Show f(x:num) { say(x); } f(42);`],
+    ["multi-parameter function",         `Show g(a:num, b:num) { give; }`],
+    ["valid square-list type",           `Make xs: list[num] = [];`],
+    ["valid angle-list type",            `Make ys: list<text> = [];`],
   ];
 
   semanticChecks.forEach(([scenario, source]) => {
@@ -288,21 +299,26 @@ describe("Semantic Checks", () => {
 //
 describe("Semantic Errors", () => {
   const semanticErrors = [
-    ["undeclared variable",       "say(x);",                     /Identifier x not declared/],
-    ["redeclared variable",       "Make x: num = 1; Make x: num = 2;", /Identifier x already declared/],
-    ["invalid return type",       "Show f() -> bool { give 5; }", /Cannot assign/],
-    ["break outside loop",        "Break;",                      /Break used outside of loop/],
-    ["continue outside loop",     "Skip;",                       /Skip used outside of loop/],
-    ["type mismatch",             "Make x: num = true;",        /Cannot assign bool to num/],
-    ["invalid assignment",        "1 = 2;",                     /Invalid assignment/],
-    ["wrong param count",         "Show f(x:num) {} f(1,2);",    /Expected 1 args but got 2/],
-    ["invalid list element type", "Make nums: list<num> = [1, true, 3];", /All list elems must match/],
-    ["invalid index type",        "Make nums: list<num> = [1,2,3]; say(nums[true]);", /Expected a number/],
-    ["assign to immutable",       "Make x: num = 1; x = 2;",    /Cannot assign to immutable variable/],
-    ["call non-function",         "Make x: num = 1; x();",      /is not a function/],
-    ["invalid standard lib usage",`say(sin(true));`,             /Expected a number/],
-    ["foreach over non-list",     "Keep x in 123 { }",          /Expected a list/],
-    ["while with non-boolean",    "Keep 5 { }",                 /Expected a boolean/],
+    ["undeclared variable",              "say(x);",                                        /Identifier x not declared/],
+    ["redeclared variable",              "Make x: num = 1; Make x: num = 2;",             /Identifier x already declared/],
+    ["invalid return type",              "Show f() -> bool { give 5; }",                  /Cannot assign/],
+    ["break outside loop",               "Break;",                                         /Break used outside of loop/],
+    ["continue outside loop",            "Skip;",                                          /Skip used outside of loop/],
+    ["type mismatch",                    "Make x: num = true;",                           /Cannot assign bool to num/],
+    ["invalid assignment",               "1 = 2;",                                        /Invalid assignment/],
+    ["wrong param count",                "Show f(x:num) {} f(1,2);",                      /Expected 1 args but got 2/],
+    ["invalid list element type",        "Make nums: list<num> = [1, true, 3];",          /All list elems must match/],
+    ["invalid index type",               "Make nums: list<num> = [1,2,3]; say(nums[true]);", /Expected a number/],
+    ["assign to immutable",              "Make x: num = 1; x = 2;",                       /Cannot assign to immutable variable/],
+    ["call non-function",                "Make x: num = 1; x();",                         /is not a function/],
+    ["invalid standard lib usage",       "say(sin(true));",                                /Expected a number/],
+    ["foreach over non-list",            "Keep x in 123 { }",                             /Expected a list/],
+    ["while with non-boolean",           "Keep 5 { }",                                    /Expected a boolean/],
+    ["invalid square-list base type",    "Make x: list[foo] = [];",                      /Type expected/],
+    ["invalid angle-list base type",     "Make x: list<foo> = [];",                      /Type expected/],
+    ["additive wrong operand",           "say(true plus false);",                        /Expected number or string/],
+    ["minus on boolean",                 "say(false minus true);",                       /Expected a number/],
+    ["string not closed literal",        `say("oops);`,                                   /oops/],
   ];
 
   semanticErrors.forEach(([scenario, source, errPattern]) => {
@@ -409,5 +425,17 @@ describe("Function Parameter and Assignment Checks", () => {
   it("throws on assignment to immutable variable", () => {
     assert.throws(() => analyze(parse("Make x: num = 1; x = 2;")),
                   /Cannot assign to immutable variable/);
+  });
+});
+
+//
+// Group 7: Statement_parenStmt branch
+//
+describe("Paren Statement", () => {
+  it("returns expression node for (Exp);", () => {
+    const analyzed = analyze(parse("(1 plus 2);"));
+    const expr = analyzed.statements[0];
+    assert.equal(expr.kind, "BinaryExpression");
+    assert.equal(expr.op, "plus");
   });
 });

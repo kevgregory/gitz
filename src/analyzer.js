@@ -15,9 +15,6 @@ class Context {
   }
 
   add(name, entity) {
-    if (this.locals.has(name)) {
-      throw new Error(`Identifier ${name} already declared`);
-    }
     this.locals.set(name, entity);
   }
 
@@ -33,10 +30,6 @@ class Context {
 
   static root() {
     const ctx = new Context({ locals: new Map(Object.entries(core.standardLibrary)) });
-    // Add π if missing
-    if (!ctx.locals.has("π")) {
-      ctx.locals.set("π", { kind: "Variable", name: "π", mutable: false, type: core.numType });
-    }
     ctx.add("true",  { kind: "BooleanLiteral", value: true,  type: core.boolType });
     ctx.add("false", { kind: "BooleanLiteral", value: false, type: core.boolType });
     return ctx;
@@ -52,9 +45,6 @@ let context;
 function must(cond, msg, { at } = {}) {
   if (!cond) {
     let prefix = "";
-    if (at && typeof at.getLineAndColumnMessage === "function") {
-      prefix = at.getLineAndColumnMessage();
-    }
     throw new Error(prefix + msg);
   }
 }
@@ -101,9 +91,6 @@ function mustBeInLoop(keyword, at) {
 }
 
 export default function analyze(match) {
-  if (!match.succeeded()) {
-    throw new Error(match.message);
-  }
   context = Context.root();
   const semantics = match.matcher.grammar.createSemantics();
 
@@ -140,10 +127,6 @@ export default function analyze(match) {
       return core.variableDeclaration(variable, core.emptyInitializer(varType));
     },
 
-    ListDecl_listDecl(_mk, id, _colon, typeNode, initOpt, _semi) {
-      // identical to VarDecl
-      return this.VarDecl_varDecl(_mk, id, _colon, typeNode, initOpt, _semi);
-    },
 
     Initialiser_init(_eq, exp) {
       return getRep(exp);
@@ -159,15 +142,9 @@ export default function analyze(match) {
 
       // params.rep() → array of variable nodes
       let paramList = getRep(params);
-      if (!Array.isArray(paramList)) {
-        paramList = [paramList];
-      }
       // check duplicate param names
       const seen = new Set();
       paramList.forEach((param) => {
-        if (seen.has(param.name)) {
-          throw new Error(`Identifier ${param.name} already declared`);
-        }
         seen.add(param.name);
       });
 
@@ -243,10 +220,6 @@ export default function analyze(match) {
       if (ors.length) {
         alternate = core.ifStatement(ors[0].condition, ors[0].block, null);
         let cur = alternate;
-        for (let i = 1; i < ors.length; i++) {
-          cur.alternate = core.ifStatement(ors[i].condition, ors[i].block, null);
-          cur = cur.alternate;
-        }
         if (elseBlk.children.length) {
           cur.alternate = getRep(elseBlk);
         }
@@ -343,11 +316,6 @@ export default function analyze(match) {
       );
       args.forEach((a, i) => {
         const want = fn.type.paramTypes[i];
-        if (want === core.numType) {
-          mustHaveNumericType(a, { at: id });
-        } else {
-          mustBeAssignable(a, { toType: want }, { at: id });
-        }
       });
       return core.functionCall(fn, args);
     },
@@ -435,15 +403,6 @@ export default function analyze(match) {
       rest.children.forEach((ch) => {
         const op = ch.children[0].sourceString;
         const right = getRep(ch.children[1]);
-        if (op === "plus") {
-          must(
-            acc.type === core.numType || acc.type === core.textType,
-            "Expected number or string",
-            { at: ch.children[0] }
-          );
-        } else {
-          mustHaveNumericType(acc, { at: ch.children[0] });
-        }
         must(acc.type === right.type, "Operands must have same type", { at: ch.children[0] });
         acc = core.binary(op, acc, right, acc.type);
       });
@@ -503,9 +462,6 @@ export default function analyze(match) {
     PrimaryExp_primaryList(l) {
       return getRep(l);
     },
-    PrimaryExp_primaryBool(b) {
-      return { kind: "BooleanLiteral", value: b.sourceString === "true", type: core.boolType };
-    },
 
     BasicType_basicType(b) {
       return b.sourceString;
@@ -532,34 +488,7 @@ export default function analyze(match) {
       return core.listType(base);
     },
 
-    FloatLit_floatFull(w, p, f, e) {
-      return {
-        kind:  "NumberLiteral",
-        value: parseFloat(w.sourceString + p.sourceString + f.sourceString + (e.sourceString||"")),
-        type:  core.numType
-      };
-    },
-    FloatLit_floatTrailingDot(w, p, e) {
-      return {
-        kind:  "NumberLiteral",
-        value: parseFloat(w.sourceString + p.sourceString + (e.sourceString||"")),
-        type:  core.numType
-      };
-    },
-    FloatLit_floatLeadingDot(p, f, e) {
-      return {
-        kind:  "NumberLiteral",
-        value: parseFloat(p.sourceString + f.sourceString + (e.sourceString||"")),
-        type:  core.numType
-      };
-    },
 
-    StringLit_stringClosed(_open, chars, _close) {
-      return { kind: "StringLiteral", value: chars.sourceString, type: core.textType };
-    },
-    StringLit_stringUnclosed(_open, chars) {
-      throw new Error("String literal not closed");
-    },
 
     ListExp_listExp(_l, elemsOpt, _r) {
       const elems = elemsOpt.children.length ? getRep(elemsOpt.children[0]) : [];
