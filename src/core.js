@@ -14,7 +14,6 @@ export function variableDeclaration(variable, initializer) {
 export function listDeclaration(name, elementType, initializer) {
   return { kind: "ListDeclaration", name, elementType, initializer };
 }
-
 export function variable(name, mutable, type) {
   return { kind: "Variable", name, mutable, type };
 }

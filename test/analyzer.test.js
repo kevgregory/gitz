@@ -7,11 +7,14 @@ import analyze from "../src/analyzer.js";
 import {
   program,
   variableDeclaration,
+  listDeclaration,
   variable,
   binary,
   numType,
   boolType,
   textType,
+  voidType,
+  anyType,
   functionDeclaration,
   fun,
   intrinsicFunction,
@@ -37,7 +40,205 @@ import {
 } from "../src/core.js";
 
 //
-// Group 1: Semantic Checks – valid source programs should be accepted.
+// Group 1: Core Functions Tests – directly call core.js functions
+//
+describe("Core Functions", () => {
+  it("program() returns a Program node", () => {
+    const p = program([]);
+    assert.equal(p.kind, "Program");
+  });
+
+  it("variableDeclaration() returns a VariableDeclaration node", () => {
+    const v = variable("x", false, numType);
+    const decl = variableDeclaration(v, emptyInitializer(numType));
+    assert.equal(decl.kind, "VariableDeclaration");
+    assert.equal(decl.variable.name, "x");
+  });
+
+  it("listDeclaration() returns a ListDeclaration node", () => {
+    const init = emptyInitializer(numType);
+    const ld = listDeclaration("xs", numType, init);
+    assert.equal(ld.kind, "ListDeclaration");
+    assert.equal(ld.name, "xs");
+    assert.equal(ld.elementType, numType);
+    assert.equal(ld.initializer, init);
+  });
+
+  it("fun() default fnType infers void->void when fnType is omitted", () => {
+    const f = fun("h", [], [], null);
+    // should have picked up functionType([], voidType)
+    assert.equal(f.type.kind, "FunctionType");
+    assert.deepEqual(f.type.paramTypes, []);
+    assert.equal(f.type.returnType, voidType);
+    assert.equal(f.returnType, voidType);
+  });
+
+  it("functionCall() uses .returnType when .returnType is present", () => {
+    const f = fun("hf", [], [], functionType([], numType), numType);
+    const fc = functionCall(f, []);
+    assert.equal(fc.type, numType);
+  });
+
+  it("functionCall() falls back to type.returnType when .returnType is absent", () => {
+    const intr = intrinsicFunction("iz", functionType([boolType], textType));
+    const fc = functionCall(intr, [{ kind: "BooleanLiteral", value: true, type: boolType }]);
+    assert.equal(fc.type, textType);
+  });
+
+  it("subscript() yields element type when array.type is list<…>", () => {
+    const arr = { kind: "ListLiteral", elements: [], type: "list<bool>" };
+    const s = subscript(arr, { kind: "NumberLiteral", value: 0, type: numType });
+    assert.equal(s.type, "bool");
+  });
+
+  it("subscript() defaults to anyType when array.type is not a list", () => {
+    const arr = { kind: "Whatever", elements: [], type: "foo" };
+    const s = subscript(arr, { kind: "NumberLiteral", value: 0, type: numType });
+    assert.equal(s.type, anyType);
+  });
+
+  it("getListElementType() returns element type for list<…>", () => {
+    assert.equal(getListElementType("list<text>"), "text");
+  });
+
+  it("getListElementType() returns anyType for non-list types", () => {
+    assert.equal(getListElementType("bar"), anyType);
+  });
+
+  it("variable() returns a Variable node", () => {
+    const v = variable("y", false, textType);
+    assert.equal(v.kind, "Variable");
+    assert.equal(v.name, "y");
+  });
+
+  it("emptyInitializer() returns an EmptyInitializer node", () => {
+    const init = emptyInitializer(numType);
+    assert.equal(init.kind, "EmptyInitializer");
+  });
+
+  it("functionDeclaration() returns a FunctionDeclaration node", () => {
+    const f = fun("f", [], [], functionType([], numType), numType);
+    const fd = functionDeclaration(f);
+    assert.equal(fd.kind, "FunctionDeclaration");
+  });
+
+  it("intrinsicFunction() marks intrinsic correctly", () => {
+    const intr = intrinsicFunction("hi", functionType([numType], textType));
+    assert.equal(intr.kind, "Function");
+    assert.equal(intr.intrinsic, true);
+    assert.deepEqual(intr.type.paramTypes, [numType]);
+    assert.equal(intr.type.returnType, textType);
+  });
+
+  it("functionType() returns a FunctionType node", () => {
+    const ft = functionType([numType], numType);
+    assert.equal(ft.kind, "FunctionType");
+  });
+
+  it("ifStatement() returns an IfStatement node", () => {
+    const iff = ifStatement(true, ["a"], ["b"]);
+    assert.equal(iff.kind, "IfStatement");
+  });
+
+  it("whileStatement() returns a WhileStatement node", () => {
+    const ws = whileStatement(true, ["body"]);
+    assert.equal(ws.kind, "WhileStatement");
+  });
+
+  it("forStatement() returns a ForStatement node", () => {
+    const it = variable("i", true, numType);
+    const fs = forStatement(it, listLiteral([], listType(numType)), ["body"]);
+    assert.equal(fs.kind, "ForStatement");
+  });
+
+  it("tryCatch() returns a TryCatchStatement node", () => {
+    const tc = tryCatch(["try"], "e", ["catch"]);
+    assert.equal(tc.kind, "TryCatchStatement");
+  });
+
+  it("binary() returns a BinaryExpression node", () => {
+    const b = binary(
+      "plus",
+      { kind: "NumberLiteral", value: 1, type: numType },
+      { kind: "NumberLiteral", value: 2, type: numType },
+      numType
+    );
+    assert.equal(b.kind, "BinaryExpression");
+    assert.equal(b.op, "plus");
+  });
+
+  it("unary() returns a UnaryExpression node", () => {
+    const u = unary("minus", { kind: "NumberLiteral", value: 5, type: numType }, numType);
+    assert.equal(u.kind, "UnaryExpression");
+    assert.equal(u.op, "minus");
+  });
+
+  it("assignment() returns an Assignment node", () => {
+    const v = variable("x", false, numType);
+    const a = assignment(v, { kind: "NumberLiteral", value: 1, type: numType });
+    assert.equal(a.kind, "Assignment");
+  });
+
+  it("returnStatement() returns a ReturnStatement node", () => {
+    const r = returnStatement({ kind: "NumberLiteral", value: 5, type: numType });
+    assert.equal(r.kind, "ReturnStatement");
+  });
+
+  it("listType() returns the proper string", () => {
+    const lt = listType(numType);
+    assert.equal(lt, "list<num>");
+  });
+
+  it("listLiteral() returns a ListLiteral with declared type", () => {
+    const ll = listLiteral([{ kind: "NumberLiteral", value: 1, type: numType }], listType(numType));
+    assert.equal(ll.kind, "ListLiteral");
+    assert.equal(ll.type, "list<num>");
+  });
+
+  it("listLiteral() infers type from elements when no declaredType", () => {
+    const elems = [
+      { kind: "NumberLiteral", value: 1, type: numType },
+      { kind: "NumberLiteral", value: 2, type: numType },
+    ];
+    const ll = listLiteral(elems);
+    assert.equal(ll.kind, "ListLiteral");
+    assert.equal(ll.type, listType(numType));
+  });
+
+  it("listLiteral() defaults to anyType when no declaredType and elements empty", () => {
+    const ll = listLiteral([]);
+    assert.equal(ll.kind, "ListLiteral");
+    assert.equal(ll.type, anyType);
+  });
+
+  it("breakStatement() returns a BreakStatement node", () => {
+    const br = breakStatement();
+    assert.equal(br.kind, "BreakStatement");
+  });
+
+  it("continueStatement() returns a ContinueStatement node", () => {
+    const c = continueStatement();
+    assert.equal(c.kind, "ContinueStatement");
+  });
+
+  it("sayStatement() returns a PrintStatement node", () => {
+    const s = sayStatement([{ kind: "NumberLiteral", value: 1, type: numType }]);
+    assert.equal(s.kind, "PrintStatement");
+  });
+
+  it("standardLibrary has expected properties", () => {
+    assert.equal(standardLibrary.num, numType);
+    assert.equal(standardLibrary.text, textType);
+    assert.ok(standardLibrary.print.intrinsic);
+  });
+
+  it("isListType() works", () => {
+    assert.ok(isListType("list<num>"));
+  });
+});
+
+//
+// Group 2: Semantic Checks – valid source programs should be accepted.
 //
 describe("Semantic Checks", () => {
   const semanticChecks = [
@@ -83,7 +284,7 @@ describe("Semantic Checks", () => {
 });
 
 //
-// Group 2: Semantic Errors – invalid programs should throw expected errors.
+// Group 3: Semantic Errors – invalid programs should throw expected errors.
 //
 describe("Semantic Errors", () => {
   const semanticErrors = [
@@ -112,7 +313,7 @@ describe("Semantic Errors", () => {
 });
 
 //
-// Group 3: Detailed IR Tests – verify that the produced IR has expected structure.
+// Group 4: Detailed IR Tests – verify that the produced IR has expected structure.
 //
 describe("Detailed IR Tests", () => {
   it("produces expected IR for a trivial program", () => {
@@ -187,7 +388,7 @@ describe("Detailed IR Tests", () => {
 });
 
 //
-// Group 4: Loop Constructs
+// Group 5: Loop Constructs
 //
 describe("Loop Constructs", () => {
   it("handles while loop with break", () => {
@@ -202,162 +403,11 @@ describe("Loop Constructs", () => {
 });
 
 //
-// Group 5: Function Parameter and Assignment Checks
+// Group 6: Function Parameter and Assignment Checks
 //
 describe("Function Parameter and Assignment Checks", () => {
   it("throws on assignment to immutable variable", () => {
     assert.throws(() => analyze(parse("Make x: num = 1; x = 2;")),
                   /Cannot assign to immutable variable/);
-  });
-});
-
-//
-// Group 6: Core Functions Tests – directly call core.js functions
-//
-describe("Core Functions", () => {
-  it("program() returns a Program node", () => {
-    const p = program([]);
-    assert.equal(p.kind, "Program");
-  });
-
-  it("variableDeclaration() returns a VariableDeclaration node", () => {
-    const v = variable("x", false, numType);
-    const decl = variableDeclaration(v, emptyInitializer(numType));
-    assert.equal(decl.kind, "VariableDeclaration");
-    assert.equal(decl.variable.name, "x");
-  });
-
-  it("variable() returns a Variable node", () => {
-    const v = variable("y", false, textType);
-    assert.equal(v.kind, "Variable");
-    assert.equal(v.name, "y");
-  });
-
-  it("emptyInitializer() returns an EmptyInitializer node", () => {
-    const init = emptyInitializer(numType);
-    assert.equal(init.kind, "EmptyInitializer");
-  });
-
-  it("functionDeclaration() returns a FunctionDeclaration node", () => {
-    const f = fun("f", [], [], functionType([], numType), numType);
-    const fd = functionDeclaration(f);
-    assert.equal(fd.kind, "FunctionDeclaration");
-  });
-
-  it("fun() returns a Function node", () => {
-    const f = fun("g", [], [], functionType([], boolType), boolType);
-    assert.equal(f.kind, "Function");
-    assert.equal(f.returnType, boolType);
-  });
-
-  it("intrinsicFunction() marks intrinsic correctly", () => {
-    const intr = intrinsicFunction("hi", functionType([numType], textType));
-    assert.equal(intr.kind, "Function");
-    assert.equal(intr.intrinsic, true);
-    assert.deepEqual(intr.type.paramTypes, [numType]);
-    assert.equal(intr.type.returnType, textType);
-  });
-
-  it("functionType() returns a FunctionType node", () => {
-    const ft = functionType([numType], numType);
-    assert.equal(ft.kind, "FunctionType");
-  });
-
-  it("functionCall() returns a FunctionCall node", () => {
-    const f = fun("f", [], [], functionType([], numType), numType);
-    const fc = functionCall(f, []);
-    assert.equal(fc.kind, "FunctionCall");
-  });
-
-  it("ifStatement() returns an IfStatement node", () => {
-    const iff = ifStatement(true, ["a"], ["b"]);
-    assert.equal(iff.kind, "IfStatement");
-  });
-
-  it("whileStatement() returns a WhileStatement node", () => {
-    const ws = whileStatement(true, ["body"]);
-    assert.equal(ws.kind, "WhileStatement");
-  });
-
-  it("forStatement() returns a ForStatement node", () => {
-    const it = variable("i", true, numType);
-    const fs = forStatement(it, listLiteral([], listType(numType)), ["body"]);
-    assert.equal(fs.kind, "ForStatement");
-  });
-
-  it("tryCatch() returns a TryCatchStatement node", () => {
-    const tc = tryCatch(["try"], "e", ["catch"]);
-    assert.equal(tc.kind, "TryCatchStatement");
-  });
-
-  it("binary() returns a BinaryExpression node", () => {
-    const b = binary("plus",
-      { kind:"NumberLiteral",value:1,type:numType },
-      { kind:"NumberLiteral",value:2,type:numType },
-      numType);
-    assert.equal(b.kind, "BinaryExpression");
-    assert.equal(b.op, "plus");
-  });
-
-  it("unary() returns a UnaryExpression node", () => {
-    const u = unary("minus",
-      { kind:"NumberLiteral",value:5,type:numType },
-      numType);
-    assert.equal(u.kind, "UnaryExpression");
-    assert.equal(u.op, "minus");
-  });
-
-  it("assignment() returns an Assignment node", () => {
-    const v = variable("x", false, numType);
-    const a = assignment(v, { kind:"NumberLiteral",value:1,type:numType });
-    assert.equal(a.kind, "Assignment");
-  });
-
-  it("returnStatement() returns a ReturnStatement node", () => {
-    const r = returnStatement({ kind:"NumberLiteral",value:5,type:numType });
-    assert.equal(r.kind, "ReturnStatement");
-  });
-
-  it("listType() returns the proper string", () => {
-    const lt = listType(numType);
-    assert.equal(lt, "list<num>");
-  });
-
-  it("listLiteral() returns a ListLiteral node with declared type", () => {
-    const ll = listLiteral([{ kind:"NumberLiteral",value:1,type:numType }], listType(numType));
-    assert.equal(ll.kind, "ListLiteral");
-    assert.equal(ll.type, "list<num>");
-  });
-
-  it("subscript() returns a SubscriptExpression node", () => {
-    const arr = { kind:"ListLiteral",elements:[{kind:"NumberLiteral",value:1,type:numType}],type:"list<num>" };
-    const s = subscript(arr, { kind:"NumberLiteral",value:0,type:numType });
-    assert.equal(s.kind, "SubscriptExpression");
-  });
-
-  it("breakStatement() returns a BreakStatement node", () => {
-    const br = breakStatement();
-    assert.equal(br.kind, "BreakStatement");
-  });
-
-  it("continueStatement() returns a ContinueStatement node", () => {
-    const c = continueStatement();
-    assert.equal(c.kind, "ContinueStatement");
-  });
-
-  it("sayStatement() returns a PrintStatement node", () => {
-    const s = sayStatement([{ kind:"NumberLiteral",value:1,type:numType }]);
-    assert.equal(s.kind, "PrintStatement");
-  });
-
-  it("standardLibrary has expected properties", () => {
-    assert.equal(standardLibrary.num, numType);
-    assert.equal(standardLibrary.text, textType);
-    assert.ok(standardLibrary.print.intrinsic);
-  });
-
-  it("isListType() and getListElementType() work", () => {
-    assert.ok(isListType("list<num>"));
-    assert.equal(getListElementType("list<num>"), "num");
   });
 });
