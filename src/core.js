@@ -56,9 +56,17 @@ export function functionType(paramTypes, returnType = voidType) {
   return { kind: "FunctionType", paramTypes, returnType };
 }
 
-// Expression‐level function calls
+// — **Fixed** Expression‐level function calls
 export function functionCall(target, args) {
-  return { kind: "FunctionCall", target, args };
+  // Every IR expression must carry its result type.
+  // For calls, that’s the function’s declared return type:
+  const resultType =
+    // user‐defined functions have .returnType
+    target.returnType != null
+      ? target.returnType
+      // intrinsics (and any Function) store it on .type.returnType
+      : target.type.returnType;
+  return { kind: "FunctionCall", target, args, type: resultType };
 }
 
 // — Control Structures
@@ -147,12 +155,10 @@ export function continueStatement() {
 
 // Maps directly to your `say(...)` statement
 export function sayStatement(args) {
-  // in our IR it's called PrintStatement
   return { kind: "PrintStatement", args, type: voidType };
 }
 
 // — Standard Library
-// build the one intrinsic once so we can alias for print
 const sayIntr = intrinsicFunction("say", functionType([anyType], voidType));
 
 export const standardLibrary = Object.freeze({
@@ -163,7 +169,7 @@ export const standardLibrary = Object.freeze({
   void:  voidType,
   any:   anyType,
 
-  // built‐in constant π
+  // built‐in constant
   π: {
     kind:     "NumberLiteral",
     value:    Math.PI,
@@ -172,7 +178,7 @@ export const standardLibrary = Object.freeze({
   },
 
   // the one “print” analogue in Gitz
-  say: sayIntr,
+  say:   sayIntr,
   print: intrinsicFunction("print", functionType([anyType], voidType)),
 
   // math & miscellany
