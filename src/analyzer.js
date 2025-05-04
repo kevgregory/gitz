@@ -74,12 +74,7 @@ function mustAllHaveSameType(exprs, at) {
 }
 
 function mustBeAssignable(src, { toType }, at) {
-  if (src.type === "any" || toType === "any") return;
   must(src.type === toType, `Cannot assign ${src.type} to ${toType}`, at);
-}
-
-function isMutable(e) {
-  return e?.kind === "Variable" && e.mutable;
 }
 
 function mustBeMutable(e, at) {
@@ -234,9 +229,7 @@ export default function analyze(match) {
     },
 
     Block_block(_l, stmtsOpt, _r) {
-      if (!stmtsOpt.children.length) return [];
-      const rep = getRep(stmtsOpt.children[0]);
-      return Array.isArray(rep) ? rep : [rep];
+      return stmtsOpt.children.map(getRep).flat();
     },
 
     LoopStmt_loopForEach(_keep, id, _in, exp, block) {
@@ -308,7 +301,7 @@ export default function analyze(match) {
       const fn = context.lookup(id.sourceString);
       mustBeFound(fn, id.sourceString, { at: id });
       must(fn.type.kind === "FunctionType", `${id.sourceString} is not a function`, { at: id });
-      const args = argListOpt.children.length ? getRep(argListOpt.children[0]) : [];
+      const args = getRep(argListOpt);
       must(
         fn.type.paramTypes.length === args.length,
         `Expected ${fn.type.paramTypes.length} args but got ${args.length}`,
