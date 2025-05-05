@@ -1,6 +1,6 @@
-import { describe, it } from "node:test"
-import assert from "node:assert/strict"
-import parse from "../src/parser.js"
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import parse from "../src/parser.js";
 
 // Programs expected to be syntactically correct
 const syntaxChecks = [
@@ -16,7 +16,10 @@ const syntaxChecks = [
   ["assignments", "x = 5; y = 10;"],
   ["if statement", "When x < 10 { say(1); }"],
   ["if-else statement", "When x < 10 { say(1); } orElse { say(2); }"],
-  ["if-else ladder", "When x < 10 { say(1); } orWhen x < 20 { say(2); } orElse { say(3); }"],
+  [
+    "if-else ladder",
+    "When x < 10 { say(1); } orWhen x < 20 { say(2); } orElse { say(3); }",
+  ],
   ["while loop", "Keep x < 10 { say(x); }"],
   ["foreach loop", "Keep i in numbers { say(i); }"],
   ["try-catch block", "Try { say(1); } Catch e { say(e); }"],
@@ -34,10 +37,26 @@ const syntaxChecks = [
 const syntaxErrors = [
   ["missing semicolon", "Make x: num = 5", /Expected ";"$/],
   ["unclosed block", "Show f() { Make x: num = 5;", /Expected "}"$/],
-  ["unbalanced parentheses", "Make x: num = (5 plus (3 times 2);", /Expected "\)"$/],
-  ["nested function without braces", "Show outer() Show inner() {}", /Expected "{" or "->"$/],
-  ["invalid list declaration", "Make numbers: list<num = [1, 2, 3];", /Expected ">"$/],
-  ["invalid function return type", "Show f(): list<num { give [1, 2, 3]; }", /Expected "{"$/],
+  [
+    "unbalanced parentheses",
+    "Make x: num = (5 plus (3 times 2);",
+    /Expected "\)"$/,
+  ],
+  [
+    "nested function without braces",
+    "Show outer() Show inner() {}",
+    /Expected "{" or "->"$/,
+  ],
+  [
+    "invalid list declaration",
+    "Make numbers: list<num = [1, 2, 3];",
+    /Expected ">"$/,
+  ],
+  [
+    "invalid function return type",
+    "Show f(): list<num { give [1, 2, 3]; }",
+    /Expected "{"$/,
+  ],
 ];
 
 describe("The Gitz parser", () => {

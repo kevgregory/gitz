@@ -1,17 +1,14 @@
 // src/analyzer.js
 import * as core from "./core.js";
 
-// ───────────────────────────────────── helpers ──────────────────────────────────
 function getRep(node) {
   return node && typeof node.rep === "function" ? node.rep() : node;
 }
 
-// 🔧 helper to compare structurally‑identical types
 function sameType(a, b) {
   return a === b || String(a) === String(b);
 }
 
-// 🔧 helper to fetch the right‑hand expression in op‑chains
 const rhs = (c) => getRep(c.children[1] || c.children[c.children.length - 1]);
 
 class Context {
@@ -43,8 +40,16 @@ class Context {
     });
 
     // constants always present
-    ctx.add("true", { kind: "BooleanLiteral", value: true, type: core.boolType });
-    ctx.add("false", { kind: "BooleanLiteral", value: false, type: core.boolType });
+    ctx.add("true", {
+      kind: "BooleanLiteral",
+      value: true,
+      type: core.boolType,
+    });
+    ctx.add("false", {
+      kind: "BooleanLiteral",
+      value: false,
+      type: core.boolType,
+    });
     return ctx;
   }
 
@@ -55,7 +60,6 @@ class Context {
 
 let context; // global for current compilation
 
-// small assertion helpers -------------------------------------------------
 function must(cond, msg, { at } = {}) {
   if (cond) return;
   let prefix = "";
@@ -73,7 +77,9 @@ const mustHaveBooleanType = (e, at) =>
 function mustAllHaveSameType(exprs, at) {
   if (exprs.length < 2) return;
   const t0 = exprs[0].type;
-  exprs.forEach((e) => must(sameType(e.type, t0), "All list elems must match", at));
+  exprs.forEach((e) =>
+    must(sameType(e.type, t0), "All list elems must match", at),
+  );
 }
 
 function mustBeAssignable(src, { toType }, at) {
@@ -82,7 +88,7 @@ function mustBeAssignable(src, { toType }, at) {
   must(
     sameType(src.type, toType),
     `Cannot assign ${src.type} to ${toType}`,
-    at
+    at,
   );
 }
 /* c8 ignore start */
@@ -95,7 +101,6 @@ const mustBeInLoop = (kw, at) =>
 
 // ───────────────────────────────────── analyze ──────────────────────────────────
 export default function analyze(match) {
-
   context = Context.root();
   const semantics = match.matcher.grammar.createSemantics();
 
@@ -159,7 +164,9 @@ export default function analyze(match) {
       params
         .filter(Boolean) // 🔧 guard against undefined
         .forEach((p) => {
-          must(!seen.has(p.name), `Identifier ${p.name} already declared`, { at: id });
+          must(!seen.has(p.name), `Identifier ${p.name} already declared`, {
+            at: id,
+          });
           seen.add(p.name);
         });
 
@@ -172,8 +179,8 @@ export default function analyze(match) {
         [], // body filled later
         core.functionType(
           params.map((p) => p.type),
-          returnType
-        )
+          returnType,
+        ),
       );
 
       // allow recursion
@@ -190,12 +197,16 @@ export default function analyze(match) {
     },
 
     Params_params(_lp, paramListOpt, _rp) {
-      return paramListOpt.children.length ? getRep(paramListOpt.children[0]) : [];
+      return paramListOpt.children.length
+        ? getRep(paramListOpt.children[0])
+        : [];
     },
     ParamList_paramList(first, _comma, rest) {
       // 🔧 fallback handles single‑child wrappers created by the grammar
       const arr = [getRep(first)];
-      rest.children.forEach((c) => arr.push(getRep(c.children[1] || c.children[0])));
+      rest.children.forEach((c) =>
+        arr.push(getRep(c.children[1] || c.children[0])),
+      );
       return arr;
     },
     Param_param(id, _colon, typeNode) {
@@ -208,17 +219,23 @@ export default function analyze(match) {
 
     // ─────────── return ──────────────────────────────────────────────────
     ReturnStmt_returnStmt(_give, expOpt, _semi) {
-      must(context.currentFunction, "Return used outside of a function", { at: this });
+      must(context.currentFunction, "Return used outside of a function", {
+        at: this,
+      });
       if (!expOpt.children.length) {
         must(
           context.currentFunction.returnType === core.voidType,
           "Return with no value in non-void function",
-          { at: this }
+          { at: this },
         );
         return core.returnStatement(null);
       }
       const expr = getRep(expOpt.children[0]);
-      mustBeAssignable(expr, { toType: context.currentFunction.returnType }, { at: this });
+      mustBeAssignable(
+        expr,
+        { toType: context.currentFunction.returnType },
+        { at: this },
+      );
       return core.returnStatement(expr);
     },
 
@@ -236,7 +253,11 @@ export default function analyze(match) {
         alternate = core.ifStatement(ors[0].condition, ors[0].block, null);
         let cur = alternate;
         for (let i = 1; i < ors.length; i++) {
-          cur.alternate = core.ifStatement(ors[i].condition, ors[i].block, null);
+          cur.alternate = core.ifStatement(
+            ors[i].condition,
+            ors[i].block,
+            null,
+          );
           cur = cur.alternate;
         }
         if (elseOpt.children.length) cur.alternate = getRep(elseOpt);
@@ -265,7 +286,7 @@ export default function analyze(match) {
       must(
         typeof coll.type === "string" && coll.type.startsWith("list<"),
         "Expected a list",
-        { at: exp }
+        { at: exp },
       );
       const elemType = coll.type.slice(5, -1);
       const iterVar = core.variable(id.sourceString, true, elemType);
@@ -335,14 +356,14 @@ export default function analyze(match) {
       must(
         fn.kind === "Function" && fn.type.kind === "FunctionType",
         `${id.sourceString} is not a function`,
-        { at: id }
+        { at: id },
       );
 
       const args = getRep(argList);
       must(
         fn.type.paramTypes.length === args.length,
         `Expected ${fn.type.paramTypes.length} args but got ${args.length}`,
-        { at: id }
+        { at: id },
       );
 
       args.forEach((a, i) => {
@@ -362,15 +383,19 @@ export default function analyze(match) {
       must(
         fn.kind === "Function" && fn.type.kind === "FunctionType",
         `${id.sourceString} is not a function`,
-        { at: id }
+        { at: id },
       );
-      must(fn.type.paramTypes.length === 0, "Expected 0 args but got some", { at: id });
+      must(fn.type.paramTypes.length === 0, "Expected 0 args but got some", {
+        at: id,
+      });
       return core.functionCall(fn, []);
     },
 
     ArgList_argList(first, _comma, rest) {
       const arr = [getRep(first)];
-      rest.children.forEach((c) => arr.push(getRep(c.children[1] || c.children[0])));
+      rest.children.forEach((c) =>
+        arr.push(getRep(c.children[1] || c.children[0])),
+      );
       mustAllHaveSameType(arr, { at: first });
       return arr;
     },
@@ -421,11 +446,9 @@ export default function analyze(match) {
       rest.children.forEach((c) => {
         const op = c.children[0].sourceString;
         const right = rhs(c); // 🔧
-        must(
-          sameType(acc.type, right.type),
-          "Operands must have same type",
-          { at: c.children[0] }
-        );
+        must(sameType(acc.type, right.type), "Operands must have same type", {
+          at: c.children[0],
+        });
         acc = core.binary(op, acc, right, core.boolType);
       });
       return acc;
@@ -436,11 +459,9 @@ export default function analyze(match) {
       rest.children.forEach((c) => {
         const op = c.children[0].sourceString;
         const right = rhs(c); // 🔧
-        must(
-          sameType(acc.type, right.type),
-          "Operands must have same type",
-          { at: c.children[0] }
-        );
+        must(sameType(acc.type, right.type), "Operands must have same type", {
+          at: c.children[0],
+        });
         acc = core.binary(op, acc, right, core.boolType);
       });
       return acc;
@@ -451,10 +472,10 @@ export default function analyze(match) {
       rest.children.forEach((c) => {
         const op = c.children[0].sourceString;
         const right = rhs(c);
-      
+
         acc = core.binary(op, acc, right, acc.type);
       });
-      return acc;    
+      return acc;
     },
 
     MultiplicativeExp_mulExp(first, _op, rest) {
@@ -462,13 +483,19 @@ export default function analyze(match) {
       rest.children.forEach((c) => {
         const op = c.children[0].sourceString;
         const right = rhs(c); // 🔧
-        mustHaveNumericType(acc, { at: c.children[0] }, "Expected number or string");
-        mustHaveNumericType(right, { at: c.children[0] }, "Expected number or string");
-        must(
-          sameType(acc.type, right.type),
-          "Operands must have same type",
-          { at: c.children[0] }
+        mustHaveNumericType(
+          acc,
+          { at: c.children[0] },
+          "Expected number or string",
         );
+        mustHaveNumericType(
+          right,
+          { at: c.children[0] },
+          "Expected number or string",
+        );
+        must(sameType(acc.type, right.type), "Operands must have same type", {
+          at: c.children[0],
+        });
         acc = core.binary(op, acc, right, acc.type);
       });
       return acc;
@@ -502,10 +529,18 @@ export default function analyze(match) {
       return ent;
     },
     PrimaryExp_primaryFloat(f) {
-      return { kind: "NumberLiteral", value: parseFloat(f.sourceString), type: core.numType };
+      return {
+        kind: "NumberLiteral",
+        value: parseFloat(f.sourceString),
+        type: core.numType,
+      };
     },
     PrimaryExp_primaryInt(i) {
-      return { kind: "NumberLiteral", value: parseInt(i.sourceString, 10), type: core.numType };
+      return {
+        kind: "NumberLiteral",
+        value: parseInt(i.sourceString, 10),
+        type: core.numType,
+      };
     },
     PrimaryExp_primaryString(str) {
       return {
@@ -515,12 +550,18 @@ export default function analyze(match) {
       };
     },
     PrimaryExp_primaryBool(b) {
-      return { kind: "BooleanLiteral", value: b.sourceString === "true", type: core.boolType };
+      return {
+        kind: "BooleanLiteral",
+        value: b.sourceString === "true",
+        type: core.boolType,
+      };
     },
 
     // ─────────── list literals & types ───────────────────────────────────
     ListExp_listExp(_l, elemsOpt, _r) {
-      const elems = elemsOpt.children.length ? getRep(elemsOpt.children[0]) : [];
+      const elems = elemsOpt.children.length
+        ? getRep(elemsOpt.children[0])
+        : [];
       mustAllHaveSameType(elems, { at: _l });
       const elemType = elems.length ? elems[0].type : core.anyType;
       return core.listLiteral(elems, core.listType(elemType));
@@ -530,22 +571,22 @@ export default function analyze(match) {
       const elemT = getRep(elemTypeNode);
       const isBuiltInOrList =
         typeof elemT === "string" &&
-        (
-          [core.numType, core.boolType, core.textType, core.voidType].includes(elemT) ||
-          elemT.startsWith("list<")
-        );
+        ([core.numType, core.boolType, core.textType, core.voidType].includes(
+          elemT,
+        ) ||
+          elemT.startsWith("list<"));
       must(isBuiltInOrList, "Type expected", { at: elemTypeNode });
       return core.listType(elemT);
     },
-    
+
     ListType_listTypeAngle(_list, _lt, elemTypeNode, _gt) {
       const elemT = getRep(elemTypeNode);
       const isBuiltInOrList =
         typeof elemT === "string" &&
-        (
-          [core.numType, core.boolType, core.textType, core.voidType].includes(elemT) ||
-          elemT.startsWith("list<")
-        );
+        ([core.numType, core.boolType, core.textType, core.voidType].includes(
+          elemT,
+        ) ||
+          elemT.startsWith("list<"));
       must(isBuiltInOrList, "Type expected", { at: elemTypeNode });
       return core.listType(elemT);
     },
@@ -553,7 +594,9 @@ export default function analyze(match) {
     // ─────────── comma separated lists ───────────────────────────────────
     ExpList_expList(first, _comma, rest) {
       const arr = [getRep(first)];
-      rest.children.forEach((c) => arr.push(getRep(c.children[1] || c.children[0])));
+      rest.children.forEach((c) =>
+        arr.push(getRep(c.children[1] || c.children[0])),
+      );
       mustAllHaveSameType(arr, { at: first });
       return arr;
     },
@@ -570,11 +613,16 @@ export default function analyze(match) {
     /* c8 ignore start */
     BasicType_basicType(tok) {
       switch (tok.sourceString) {
-        case "num": return core.numType;
-        case "text": return core.textType;
-        case "bool": return core.boolType;
-        case "void": return core.voidType;
-        default: return tok.sourceString;
+        case "num":
+          return core.numType;
+        case "text":
+          return core.textType;
+        case "bool":
+          return core.boolType;
+        case "void":
+          return core.voidType;
+        default:
+          return tok.sourceString;
         /* c8 ignore stop */
       }
     },
@@ -583,7 +631,6 @@ export default function analyze(match) {
   // run semantics
   return semantics(match).rep();
 }
-
 
 export { Context };
 export { getRep };

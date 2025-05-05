@@ -13,8 +13,8 @@ export default function generate(program) {
   // Variable and function names in JS will be suffixed with _1, _2, _3, etc.
   // This is because some Gitz identifiers (like "switch") aren't legal
   // bare words in JS. So we map each IR entity to a unique JS name.
-  const targetName = (mapping => {
-    return entity => {
+  const targetName = ((mapping) => {
+    return (entity) => {
       if (!mapping.has(entity)) {
         mapping.set(entity, mapping.size + 1);
       }
@@ -23,7 +23,8 @@ export default function generate(program) {
   })(new Map());
 
   // gen(node) will either dispatch to a generators[node.kind], or return node.
-  const gen = node => (node && generators[node.kind] ? generators[node.kind](node) : node);
+  const gen = (node) =>
+    node && generators[node.kind] ? generators[node.kind](node) : node;
 
   const generators = {
     // === Top‐level program ===
@@ -50,7 +51,7 @@ export default function generate(program) {
 
     FunctionDeclaration(d) {
       output.push(
-        `function ${gen(d.fun)}(${d.fun.params.map(gen).join(", ")}) {`
+        `function ${gen(d.fun)}(${d.fun.params.map(gen).join(", ")}) {`,
       );
       d.fun.body.forEach(gen);
       output.push("}");
@@ -71,9 +72,7 @@ export default function generate(program) {
     ReturnStatement(s) {
       // Gitz always uses `give`, so returns always end in `;`
       output.push(
-        s.expression != null
-          ? `return ${gen(s.expression)};`
-          : `return;`
+        s.expression != null ? `return ${gen(s.expression)};` : `return;`,
       );
     },
 

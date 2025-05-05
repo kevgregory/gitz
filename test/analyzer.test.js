@@ -96,10 +96,9 @@ describe("Core Functions", () => {
 
   it("functionCall() falls back to type.returnType when .returnType is absent", () => {
     const intr = intrinsicFunction("iz", functionType([boolType], textType));
-    const fc = functionCall(
-      intr,
-      [{ kind: "BooleanLiteral", value: true, type: boolType }]
-    );
+    const fc = functionCall(intr, [
+      { kind: "BooleanLiteral", value: true, type: boolType },
+    ]);
     assert.equal(fc.type, textType);
   });
 
@@ -173,9 +172,7 @@ describe("Core Functions", () => {
 
   it("forStatement() returns a ForStatement node", () => {
     const it = variable("i", true, numType);
-    const fs = forStatement(it, listLiteral([], listType(numType)), [
-      "body",
-    ]);
+    const fs = forStatement(it, listLiteral([], listType(numType)), ["body"]);
     assert.equal(fs.kind, "ForStatement");
   });
 
@@ -189,7 +186,7 @@ describe("Core Functions", () => {
       "plus",
       { kind: "NumberLiteral", value: 1, type: numType },
       { kind: "NumberLiteral", value: 2, type: numType },
-      numType
+      numType,
     );
     assert.equal(b.kind, "BinaryExpression");
     assert.equal(b.op, "plus");
@@ -199,7 +196,7 @@ describe("Core Functions", () => {
     const u = unary(
       "minus",
       { kind: "NumberLiteral", value: 5, type: numType },
-      numType
+      numType,
     );
     assert.equal(u.kind, "UnaryExpression");
     assert.equal(u.op, "minus");
@@ -232,7 +229,7 @@ describe("Core Functions", () => {
   it("listLiteral() returns a ListLiteral with declared type", () => {
     const ll = listLiteral(
       [{ kind: "NumberLiteral", value: 1, type: numType }],
-      listType(numType)
+      listType(numType),
     );
     assert.equal(ll.kind, "ListLiteral");
     assert.equal(ll.type, "list<num>");
@@ -295,10 +292,7 @@ describe("Semantic Checks", () => {
     ["function with return", `Show f() -> num { give 5; }`],
     ["empty return in void fn", `Show f() { give; }`],
     ["if statement", `When true { say(1); }`],
-    [
-      "if-else statement",
-      `When true { say(1); } orElse { say(2); }`,
-    ],
+    ["if-else statement", `When true { say(1); } orElse { say(2); }`],
     [
       "if-elseif ladder",
       `When false { say(1); } orWhen true { say(2); } orElse { say(3); }`,
@@ -338,10 +332,16 @@ describe("Semantic Checks", () => {
     ["valid angle-list type", `Make ys: list<text> = [];`],
     ["nested list declaration", `Make x: list[list<num>] = [];`],
     ["getRep() pass-through with non-object", `say(π);`],
-    ["assignment with anyType on left", `Show f() { Make x: any = 1; x = true; }`],
-    ["assignment with anyType on right", `Show f() { Make y: any = 1; Make x: bool = false; x = y; }`],
+    [
+      "assignment with anyType on left",
+      `Show f() { Make x: any = 1; x = true; }`,
+    ],
+    [
+      "assignment with anyType on right",
+      `Show f() { Make y: any = 1; Make x: bool = false; x = y; }`,
+    ],
     ["getRep() pass-through with non-object", `say(π);`],
-    ["explicit num type",  `Make x: num = 1;`],
+    ["explicit num type", `Make x: num = 1;`],
     ["explicit text type", `Make s: text = "hi";`],
     ["explicit bool type", `Make ok: bool = true;`],
     ["explicit void return", `Show noop() -> void {}`],
@@ -365,11 +365,7 @@ describe("Semantic Errors", () => {
       "Make x: num = 1; Make x: num = 2;",
       /Identifier x already declared/,
     ],
-    [
-      "invalid return type",
-      "Show f() -> bool { give 5; }",
-      /Cannot assign/,
-    ],
+    ["invalid return type", "Show f() -> bool { give 5; }", /Cannot assign/],
     ["break outside loop", "Break;", /Break used outside of loop/],
     ["continue outside loop", "Skip;", /Skip used outside of loop/],
     ["type mismatch", "Make x: num = true;", /Cannot assign bool to num/],
@@ -430,7 +426,6 @@ describe("Semantic Errors", () => {
       "Make e: num = 1; Try { say(1); } Catch e { say(e); }",
       /Identifier e already declared/,
     ],
-    
   ];
 
   semanticErrors.forEach(([scenario, source, errPattern]) => {
@@ -455,9 +450,7 @@ describe("Detailed IR Tests", () => {
   });
 
   it("handles list literals correctly", () => {
-    const analyzed = analyze(
-      parse("Make nums: list<num> = [1, 2, 3];")
-    );
+    const analyzed = analyze(parse("Make nums: list<num> = [1, 2, 3];"));
     const stmt = analyzed.statements[0];
     assert.equal(stmt.kind, "VariableDeclaration");
     assert.equal(stmt.variable.type, "list<num>");
@@ -468,7 +461,7 @@ describe("Detailed IR Tests", () => {
 
   it("handles nested lists correctly", () => {
     const analyzed = analyze(
-      parse("Make matrix: list<list<num>> = [[1,2],[3,4]];")
+      parse("Make matrix: list<list<num>> = [[1,2],[3,4]];"),
     );
     const stmt = analyzed.statements[0];
     assert.equal(stmt.variable.type, "list<list<num>>");
@@ -512,9 +505,7 @@ describe("Detailed IR Tests", () => {
   });
 
   it("produces a TryCatchStatement IR", () => {
-    const analyzed = analyze(
-      parse("Try { say(1); } Catch e { say(e); }")
-    );
+    const analyzed = analyze(parse("Try { say(1); } Catch e { say(e); }"));
     const tc = analyzed.statements[0];
     assert.equal(tc.kind, "TryCatchStatement");
     assert.equal(tc.errorVar, "e");
@@ -527,18 +518,12 @@ describe("Detailed IR Tests", () => {
 describe("Loop Constructs", () => {
   it("handles while loop with break", () => {
     const analyzed = analyze(parse("Keep true { Break; }"));
-    assert.equal(
-      analyzed.statements[0].body[0].kind,
-      "BreakStatement"
-    );
+    assert.equal(analyzed.statements[0].body[0].kind, "BreakStatement");
   });
 
   it("handles while loop with continue", () => {
     const analyzed = analyze(parse("Keep true { Skip; }"));
-    assert.equal(
-      analyzed.statements[0].body[0].kind,
-      "ContinueStatement"
-    );
+    assert.equal(analyzed.statements[0].body[0].kind, "ContinueStatement");
   });
 });
 
@@ -549,7 +534,7 @@ describe("Function Parameter and Assignment Checks", () => {
   it("throws on assignment to immutable variable", () => {
     assert.throws(
       () => analyze(parse("Make x: num = 1; x = 2;")),
-      /Cannot assign to immutable variable/
+      /Cannot assign to immutable variable/,
     );
   });
 });
@@ -597,7 +582,7 @@ describe("Extra coverage for analyzer.js", () => {
     // call to `at.getLineAndColumnMessage()` (lines 74‑75).
     assert.throws(
       () => analyze(parse("Skip;")),
-      /Error: Skip used outside of loop/ 
+      /Error: Skip used outside of loop/,
     );
   });
 
@@ -618,31 +603,39 @@ describe("Extra coverage for analyzer.js", () => {
       Show noop() -> void { }
     `;
     const tree = analyze(parse(src));
-    const decl = tree.statements.find(s => s.kind === "VariableDeclaration");
+    const decl = tree.statements.find((s) => s.kind === "VariableDeclaration");
     assert.equal(decl.variable.type, "bool");
 
-    const fn = tree.statements.find(s => s.kind === "FunctionDeclaration");
-    assert.deepEqual(fn.fun.returnType, ['void']);
+    const fn = tree.statements.find((s) => s.kind === "FunctionDeclaration");
+    assert.deepEqual(fn.fun.returnType, ["void"]);
   }); // ✅ ← this was missing
 
   it("throws on redeclared parameter name", () => {
-    assert.throws(() => analyze(parse("Show f(x:num, x:num) {}")), /Identifier x already declared/);
+    assert.throws(
+      () => analyze(parse("Show f(x:num, x:num) {}")),
+      /Identifier x already declared/,
+    );
   });
 
   describe("getRep helper", () => {
     it("calls rep() and returns a scalar wrapped in an array", () => {
       let called = false;
-      const node = { rep: () => { called = true; return 99 } };
+      const node = {
+        rep: () => {
+          called = true;
+          return 99;
+        },
+      };
       assert.strictEqual(getRep(node), 99);
       assert.ok(called, "rep() should have been invoked");
     });
-  
+
     it("passes through when rep() returns an array", () => {
       const arr = [1, 2, 3];
       const node = { rep: () => arr };
       assert.strictEqual(getRep(node), arr);
     });
-  
+
     it("falls back when there's no rep()", () => {
       const foo = { foo: 123 };
       // should just return the node itself
@@ -651,6 +644,4 @@ describe("Extra coverage for analyzer.js", () => {
       assert.strictEqual(getRep(undefined), undefined);
     });
   });
-  
-  
 });

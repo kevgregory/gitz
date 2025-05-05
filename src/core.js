@@ -1,6 +1,3 @@
-// src/core.js
-// Gitz Core – IR node constructors and standard library definitions
-
 // — Programs and Declarations
 export function program(statements) {
   return { kind: "Program", statements };
@@ -10,7 +7,6 @@ export function variableDeclaration(variable, initializer) {
   return { kind: "VariableDeclaration", variable, initializer };
 }
 
-// New: list declarations (“Make x: list<…> = …;”)
 export function listDeclaration(name, elementType, initializer) {
   return { kind: "ListDeclaration", name, elementType, initializer };
 }
