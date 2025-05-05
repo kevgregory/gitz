@@ -218,3 +218,6 @@ String.prototype.type  = textType;
 Number.prototype.type  = numType;
 Boolean.prototype.type = boolType;
 Array.prototype.type   = listType(anyType);
+
+export const arrayType       = listType;
+export const arrayExpression = listLiteral;

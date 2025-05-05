@@ -172,8 +172,6 @@ const optimizers = {
       if (e.op === "*" && isZero(e.right)) return 0
       if (e.op === "**" && isZero(e.right)) return 1
     }
-
-    return e
   },
 
   UnaryExpression(e) {
