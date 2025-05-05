@@ -135,7 +135,6 @@ export default function generate(program) {
 
     Variable(v) {
       // π is in our standardLibrary
-      if (v === standardLibrary.π) return "Math.PI";
       return targetName(v);
     },
 
