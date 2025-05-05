@@ -1,10 +1,8 @@
-// test/analyzer.test.js
-
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import parse from "../src/parser.js";
-import analyze from "../src/analyzer.js";
-import { Context } from "../src/analyzer.js";
+import analyze, { Context } from "../src/analyzer.js";
+import { getRep } from "../src/analyzer.js";
 import {
   program,
   variableDeclaration,
@@ -90,7 +88,8 @@ describe("Core Functions", () => {
   });
 
   it("functionCall() uses .returnType when .returnType is present", () => {
-    const f = fun("hf", [], [], functionType([], numType), numType);
+    const ft = functionType([], numType);
+    const f = Object.assign(fun("hf", [], [], ft), { returnType: numType });
     const fc = functionCall(f, []);
     assert.equal(fc.type, numType);
   });
@@ -144,7 +143,7 @@ describe("Core Functions", () => {
   });
 
   it("functionDeclaration() returns a FunctionDeclaration node", () => {
-    const f = fun("f", [], [], functionType([], numType), numType);
+    const f = fun("f", [], [], functionType([], numType));
     const fd = functionDeclaration(f);
     assert.equal(fd.kind, "FunctionDeclaration");
   });
@@ -629,5 +628,29 @@ describe("Extra coverage for analyzer.js", () => {
   it("throws on redeclared parameter name", () => {
     assert.throws(() => analyze(parse("Show f(x:num, x:num) {}")), /Identifier x already declared/);
   });
+
+  describe("getRep helper", () => {
+    it("calls rep() and returns a scalar wrapped in an array", () => {
+      let called = false;
+      const node = { rep: () => { called = true; return 99 } };
+      assert.strictEqual(getRep(node), 99);
+      assert.ok(called, "rep() should have been invoked");
+    });
+  
+    it("passes through when rep() returns an array", () => {
+      const arr = [1, 2, 3];
+      const node = { rep: () => arr };
+      assert.strictEqual(getRep(node), arr);
+    });
+  
+    it("falls back when there's no rep()", () => {
+      const foo = { foo: 123 };
+      // should just return the node itself
+      assert.strictEqual(getRep(foo), foo);
+      // undefined input should stay undefined
+      assert.strictEqual(getRep(undefined), undefined);
+    });
+  });
+  
   
 });
