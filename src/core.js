@@ -14,6 +14,17 @@ export function variableDeclaration(variable, initializer) {
 export function listDeclaration(name, elementType, initializer) {
   return { kind: "ListDeclaration", name, elementType, initializer };
 }
+
+// Type declarations (e.g. for user-defined structs)
+export function typeDeclaration(type) {
+  return { kind: "TypeDeclaration", type };
+}
+
+// A field inside a struct type
+export function field(name, type) {
+  return { kind: "Field", name, type };
+}
+
 export function variable(name, mutable, type) {
   return { kind: "Variable", name, mutable, type };
 }
@@ -55,12 +66,12 @@ export function functionType(paramTypes, returnType = voidType) {
   return { kind: "FunctionType", paramTypes, returnType };
 }
 
-// — **Fixed** Expression‐level function calls
+// — **Fixed** Expression-level function calls
 export function functionCall(target, args) {
   // Every IR expression must carry its result type.
   // For calls, that’s the function’s declared return type:
   const resultType =
-    // user‐defined functions have .returnType
+    // user-defined functions have .returnType
     target.returnType != null
       ? target.returnType
       // intrinsics (and any Function) store it on .type.returnType
@@ -143,7 +154,7 @@ export function subscript(array, index) {
   };
 }
 
-// — Control‐flow statements
+// — Control-flow statements
 export function breakStatement() {
   return { kind: "BreakStatement", type: voidType };
 }
@@ -157,23 +168,23 @@ export function sayStatement(args) {
   return { kind: "PrintStatement", args, type: voidType };
 }
 
-// — Standard Library
+// — Standard Library —–– seed the five primitive type names too
 const sayIntr = intrinsicFunction("say", functionType([anyType], voidType));
 
 export const standardLibrary = Object.freeze({
   // primitive type names
+  bool:  boolType,
   num:   numType,
   text:  textType,
-  bool:  boolType,
   void:  voidType,
   any:   anyType,
 
-  // built‐in constant
+  // built-in constant
   π: {
-    kind:     "NumberLiteral",
-    value:    Math.PI,
-    type:     numType,
-    mutable:  false,
+    kind:    "NumberLiteral",
+    value:   Math.PI,
+    type:    numType,
+    mutable: false,
   },
 
   // the one “print” analogue in Gitz
@@ -202,7 +213,7 @@ export function getListElementType(type) {
   return isListType(type) ? type.slice(5, -1) : anyType;
 }
 
-// Monkey‐patch JS primitives so every literal has a `.type`
+// Monkey-patch JS primitives so every literal has a `.type`
 String.prototype.type  = textType;
 Number.prototype.type  = numType;
 Boolean.prototype.type = boolType;
