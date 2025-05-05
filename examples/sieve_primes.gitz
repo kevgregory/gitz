@@ -1,0 +1,20 @@
+Make limit: num = 50;
+Make isPrime: list<bool> = [];
+
+Keep i in range(0, limit) {
+  isPrime[i] = true;
+}
+
+Keep p in range(2, limit) {
+  When isPrime[p] equal true {
+    Keep q in range(p * p, limit) {
+      isPrime[q] = false;
+    }
+  }
+}
+
+Keep i in range(2, limit) {
+  When isPrime[i] equal true {
+    say(i);
+  }
+}

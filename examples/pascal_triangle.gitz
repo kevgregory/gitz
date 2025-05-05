@@ -1,0 +1,14 @@
+Show pascal(r: num, c: num) -> num {
+  When c equal 0 or c equal r {
+    give 1;
+  }
+  orElse {
+    give pascal(r minus 1, c minus 1) plus pascal(r minus 1, c);
+  }
+}
+
+Keep row in range(0, 6) {
+  Keep col in range(0, row) {
+    say(pascal(row, col));
+  }
+}

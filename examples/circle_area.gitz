@@ -1,0 +1,9 @@
+Make radii: list<num> = [1, 2, 3, 4, 5];
+
+Show area(r: num) -> num {
+  give 3.14159 mod r mod r;
+}
+
+Keep r in radii {
+  say("r equal " plus r plus ": area=" plus area(r));
+}

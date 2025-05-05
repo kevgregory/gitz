@@ -1,0 +1,13 @@
+Make limit: num = 50;
+
+Keep n in range(2, limit) {
+  Make isPrime: num = 1;
+  Keep d in range(2, n minus 1) {
+    When n mod d equal 0 {
+      isPrime = 0;
+    }
+  }
+  When isPrime equal 1 {
+    say(n);
+  }
+}
