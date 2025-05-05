@@ -128,6 +128,51 @@ Make fruits: list<text> = ["apple", "banana", "cherry"];
 say(fruits[0]);
 ```
 
+### Generated Code Examples : 
+#### circle_area.gitz
+```gitz
+Make radii: list<num> = [1, 2, 3, 4, 5];
+
+Show area(r: num) -> num {
+  give 3.14159 mod r mod r;
+}
+
+Keep r in radii {
+  say("r equal " plus r plus ": area=" plus area(r));
+}
+```
+```javascript
+let radii_1 = [1,2,3,4,5];
+function area_2(r_3) {
+return ((3.14159 r r_3) r r_3);
+}
+for (const r_4 of radii_1) {
+console.log(((("r equal " r r_4) ": area=" ": area=") area(r) area_2(r_4)));
+}
+```
+
+#### trial_primes.gitz
+```gitz
+Make limit: num = 50;
+
+Keep n in range(2, limit) {
+  Make isPrime: num = 1;
+  Keep d in range(2, n minus 1) {
+    When n mod d equal 0 {
+      isPrime = 0;
+    }
+  }
+  When isPrime equal 1 {
+    say(n);
+  }
+}
+```
+```javascript
+let limit_1 = 50;
+for (const n_2 of range_3(2, limit_1)) {
+  let isPrime_4 = 1;
+}
+```
 ### Authors
 - Kevin Thomas
 - Callista Napitupulu
