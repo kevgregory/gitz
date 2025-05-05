@@ -84,7 +84,6 @@ function mustAllHaveSameType(exprs, at) {
 
 function mustBeAssignable(src, { toType }, at) {
   if (src.type === core.anyType || toType === core.anyType) return;
-  // 🔧 use structural comparison instead of strict reference
   must(
     sameType(src.type, toType),
     `Cannot assign ${src.type} to ${toType}`,
@@ -133,7 +132,6 @@ export default function analyze(match) {
       if (initOpt.children.length) {
         init = getRep(initOpt.children[0]);
         if (init.kind === "ListLiteral" && init.elements.length === 0) {
-          // empty list literal inherits declared type
           init.type = varType;
         }
         mustBeAssignable(init, { toType: varType }, { at: id });
