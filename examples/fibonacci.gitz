@@ -1,6 +1,0 @@
-Show fibonacci(n: num) -> num {
-    When n smaller 2 {   
-        give n;
-    }
-    give fibonacci(n minus 1) plus fibonacci(n minus 2);  
-}
